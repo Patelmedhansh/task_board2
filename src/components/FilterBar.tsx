@@ -1,17 +1,27 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { DateRange } from "react-date-range";
-import { Dispatch, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useState, useEffect } from "react";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
 
 interface FilterBarProps {
   statusFilter: string | null;
   setStatusFilter: Dispatch<SetStateAction<string | null>>;
   categoryFilter: string | null;
   setCategoryFilter: Dispatch<SetStateAction<string | null>>;
+  subcategoryFilter: string | null;
+  setSubcategoryFilter: Dispatch<SetStateAction<string | null>>;
   limit: number | null;
   setLimit: Dispatch<SetStateAction<number | null>>;
   dateRange: { from: string | null; to: string | null };
-  setDateRange: Dispatch<SetStateAction<{ from: string | null; to: string | null }>>;
+  setDateRange: Dispatch<
+    SetStateAction<{ from: string | null; to: string | null }>
+  >;
+  categoryOptions: string[];
+  subcategoryMap: Record<string, string[]>;
+  searchQuery: string | null;
+  setSearchQuery: Dispatch<SetStateAction<string | null>>;
 }
 
 export default function FilterBar({
@@ -19,10 +29,16 @@ export default function FilterBar({
   setStatusFilter,
   categoryFilter,
   setCategoryFilter,
+  subcategoryFilter,
+  setSubcategoryFilter,
   limit,
   setLimit,
   dateRange,
   setDateRange,
+  categoryOptions,
+  subcategoryMap,
+  searchQuery,
+  setSearchQuery
 }: FilterBarProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [range, setRange] = useState<any[]>([
@@ -33,6 +49,15 @@ export default function FilterBar({
     },
   ]);
 
+  useEffect(() => {
+    if (
+      categoryFilter &&
+      !subcategoryMap[categoryFilter]?.includes(subcategoryFilter || "")
+    ) {
+      setSubcategoryFilter(null);
+    }
+  }, [categoryFilter]);
+
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
       <div className="relative">
@@ -42,6 +67,8 @@ export default function FilterBar({
         <input
           type="text"
           placeholder="Search"
+          value={searchQuery ?? ""}
+          onChange={(e) => setSearchQuery(e.target.value || null)}
           className="border border-gray-300 pl-10 pr-4 py-2 rounded text-sm w-48 bg-white"
         />
       </div>
@@ -55,30 +82,49 @@ export default function FilterBar({
         <option value="To Do">To Do</option>
         <option value="In Progress">In Progress</option>
         <option value="Done">Done</option>
-        <option value="Discarded">Discarded</option>
       </select>
 
       <select
         onChange={(e) => setCategoryFilter(e.target.value || null)}
-        className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+        className="border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
         value={categoryFilter ?? ""}
       >
         <option value="">Category</option>
-        <option value="Bug">Bug</option>
-        <option value="Feature">Feature</option>
+        {categoryOptions.map((cat) => (
+          <option key={cat} value={cat}>
+            {cat}
+          </option>
+        ))}
       </select>
+
+      {categoryFilter && (
+        <select
+          onChange={(e) => setSubcategoryFilter(e.target.value || null)}
+          className="border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
+          value={subcategoryFilter ?? ""}
+        >
+          <option value="">Subcategory</option>
+          {(subcategoryMap[categoryFilter] || []).map((sub) => (
+            <option key={sub} value={sub}>
+              {sub}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="relative">
         <button
           onClick={() => setCalendarOpen(!calendarOpen)}
           className="border border-gray-300 px-3 py-2 rounded text-sm w-48 text-left bg-white"
         >
-          {range[0].startDate.toLocaleDateString()} - {range[0].endDate.toLocaleDateString()}
+          {range[0].startDate.toLocaleDateString()} -{" "}
+          {range[0].endDate.toLocaleDateString()}
         </button>
+
         {calendarOpen && (
-          <div className="absolute z-50 mt-2 shadow-lg">
+          <div className="absolute mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
             <DateRange
-              editableDateInputs={true}
+              ranges={range}
               onChange={(item) => {
                 const start = item.selection.startDate?.toISOString();
                 const end = item.selection.endDate?.toISOString();
@@ -88,7 +134,10 @@ export default function FilterBar({
                 }
               }}
               moveRangeOnFirstSelection={false}
-              ranges={range}
+              editableDateInputs={true}
+              showDateDisplay={false}
+              rangeColors={["#f97316"]}
+              direction="horizontal"
             />
           </div>
         )}
@@ -100,9 +149,9 @@ export default function FilterBar({
         value={limit ?? ""}
       >
         <option value="">Limit</option>
-        <option value="5">5</option>
         <option value="10">10</option>
         <option value="20">20</option>
+        <option value="30">30</option>
       </select>
     </div>
   );

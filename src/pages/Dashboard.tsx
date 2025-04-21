@@ -23,6 +23,13 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
+    null
+  );
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [subcategoryMap, setSubcategoryMap] = useState<
+    Record<string, string[]>
+  >({});
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -45,6 +52,8 @@ export default function Dashboard() {
     resetPagination,
     moveTask,
     findColumnOfTask,
+    searchQuery,
+    setSearchQuery,
   } = useTasks();
 
   const columnMap: Record<string, string> = {
@@ -59,7 +68,7 @@ export default function Dashboard() {
     resetPagination();
     loadMoreTasks(true);
     getUser();
-  }, [statusFilter, categoryFilter, dateRange]);
+  }, [statusFilter, categoryFilter, subcategoryFilter, dateRange, searchQuery]);
 
   useEffect(() => {
     const scrollEl = scrollRef.current;
@@ -77,6 +86,33 @@ export default function Dashboard() {
     scrollEl?.addEventListener("scroll", handleScroll);
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore]);
+
+  useEffect(() => {
+    const fetchCategoryData = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("category, subcategory");
+
+      if (!error && data) {
+        const map: Record<string, string[]> = {};
+        const categories = new Set<string>();
+
+        data.forEach((row) => {
+          if (!row.category) return;
+          categories.add(row.category);
+          if (!map[row.category]) map[row.category] = [];
+          if (row.subcategory && !map[row.category].includes(row.subcategory)) {
+            map[row.category].push(row.subcategory);
+          }
+        });
+
+        setCategoryOptions(Array.from(categories));
+        setSubcategoryMap(map);
+      }
+    };
+
+    fetchCategoryData();
+  }, []);
 
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -148,10 +184,16 @@ export default function Dashboard() {
               setStatusFilter={setStatusFilter}
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
+              subcategoryFilter={subcategoryFilter}
+              setSubcategoryFilter={setSubcategoryFilter}
               limit={limit}
               setLimit={setLimit}
               dateRange={dateRange}
               setDateRange={setDateRange}
+              categoryOptions={categoryOptions}
+              subcategoryMap={subcategoryMap}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
             />
           </div>
 

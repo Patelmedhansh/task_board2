@@ -11,11 +11,13 @@ export function useTasks() {
   });
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
   const [limit, setLimit] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -32,10 +34,12 @@ export function useTasks() {
     const { data, error } = await supabase.rpc("get_tasks_filtered", {
       status_filter: statusFilter,
       category_filter: categoryFilter,
+      subcategory_filter: subcategoryFilter,
       date_from: dateRange.from,
       date_to: dateRange.to,
       limit_count: limit ?? pageSize,
       offset_count: from,
+      search_query: searchQuery,
     });
 
     if (!error && data) {
@@ -61,22 +65,15 @@ export function useTasks() {
     const task = tasksByStatus[sourceCol].find((t) => t.id.toString() === taskId);
     if (!task) return;
 
-    // Avoid unnecessary move
     if (sourceCol === destCol && tasksByStatus[destCol][destIndex]?.id.toString() === taskId) {
       return;
     }
 
-    // Remove task from source column
     const newSourceTasks = tasksByStatus[sourceCol].filter((t) => t.id.toString() !== taskId);
-
-    // Update the task status
     const updatedTask: Task = { ...task, status: convertColumnIdToStatus(destCol) };
-
-    // Insert task into destination at the correct index
-    const newDestTasks = [...tasksByStatus[destCol]];
+    const newDestTasks = tasksByStatus[destCol].filter((t) => t.id.toString() !== taskId);
     newDestTasks.splice(destIndex, 0, updatedTask);
 
-    // Update local state
     const updated = {
       ...tasksByStatus,
       [sourceCol]: newSourceTasks,
@@ -84,16 +81,20 @@ export function useTasks() {
     };
     setTasksByStatus(updated);
 
-    // Update database
-    const { error } = await supabase.rpc("update_task_status", {
+    setTasks((prev) =>
+      prev.map((t) => (t.id.toString() === taskId ? updatedTask : t))
+    );
+
+    const { data, error } = await supabase.rpc("update_task_status", {
       task_id: task.id,
       new_status: updatedTask.status,
     });
-    
+
     if (error) {
       console.error("Failed to update task status:", error);
+    } else {
+      console.log("Task status updated successfully:", data);
     }
-    
   };
 
   const convertColumnIdToStatus = (columnId: string) => {
@@ -127,6 +128,8 @@ export function useTasks() {
     setStatusFilter,
     categoryFilter,
     setCategoryFilter,
+    subcategoryFilter,
+    setSubcategoryFilter,
     dateRange,
     setDateRange,
     limit,
@@ -137,5 +140,7 @@ export function useTasks() {
     resetPagination,
     moveTask,
     findColumnOfTask,
+    searchQuery,
+    setSearchQuery
   };
 }
