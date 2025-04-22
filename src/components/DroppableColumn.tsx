@@ -15,6 +15,7 @@ interface DroppableColumnProps {
   onCardClick?: (taskId: string) => void;
   wasDragging?: boolean;
   isDragging?: boolean;
+  totalCount: number;
 }
 
 export function DroppableColumn({
@@ -24,6 +25,7 @@ export function DroppableColumn({
   setActiveTask,
   onCardClick,
   isDragging = false,
+  totalCount,
 }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
@@ -43,7 +45,7 @@ export function DroppableColumn({
                 : "bg-green-500"
             }`}
           />
-          {title} ({tasks.length})
+          {title} ({tasks.length} of {totalCount})
         </div>
 
         <SortableContext
