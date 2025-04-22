@@ -33,6 +33,7 @@ export default function Dashboard() {
   >({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -116,9 +117,11 @@ export default function Dashboard() {
 
     fetchCategoryData();
   }, []);
-
+  
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    setIsDragging(false);
+
     if (!over || active.id === over.id) return;
 
     const activeId = active.id.toString();
@@ -207,6 +210,7 @@ export default function Dashboard() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={() => setIsDragging(true)}
               onDragEnd={onDragEnd}
             >
               <div className="grid grid-cols-3 gap-4 mt-4">
@@ -217,9 +221,12 @@ export default function Dashboard() {
                     title={columnMap[col]}
                     tasks={tasksByStatus[col] || []}
                     setActiveTask={setActiveTask}
+                    isDragging={isDragging}
                     onCardClick={(id) => {
-                      setSelectedTaskId(id);
-                      setModalOpen(true);
+                      if (!isDragging) {
+                        setSelectedTaskId(id);
+                        setModalOpen(true);
+                      }
                     }}
                   />
                 ))}

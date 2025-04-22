@@ -1,5 +1,8 @@
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import NoTask from "../assets/notask.png";
 import { DraggableCard } from "./DraggableCard";
 import { Task } from "../types/tasks";
@@ -10,10 +13,18 @@ interface DroppableColumnProps {
   tasks: Task[];
   setActiveTask: (task: Task) => void;
   onCardClick?: (taskId: string) => void;
+  wasDragging?: boolean;
+  isDragging?: boolean;
 }
 
-
-export function DroppableColumn({ columnId, title, tasks, setActiveTask, onCardClick }: DroppableColumnProps) {
+export function DroppableColumn({
+  columnId,
+  title,
+  tasks,
+  setActiveTask,
+  onCardClick,
+  isDragging = false,
+}: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
   return (

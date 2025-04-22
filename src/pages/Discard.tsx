@@ -129,8 +129,8 @@ export default function Discard() {
                   key={task.id}
                   className="border border-gray-300 p-4 rounded bg-white shadow-sm"
                 >
-                  <h2 className="font-semibold">{task.title}</h2>
-                  <p className="text-sm text-gray-600">
+                  <h2 className="font-semibold pb-2">{task.title}</h2>
+                  <p className="text-sm text-gray-600 line-clamp-1">
                     {task.description}
                   </p>
                 </div>
