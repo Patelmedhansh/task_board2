@@ -9,9 +9,11 @@ interface DroppableColumnProps {
   title: string;
   tasks: Task[];
   setActiveTask: (task: Task) => void;
+  onCardClick?: (taskId: string) => void;
 }
 
-export function DroppableColumn({ columnId, title, tasks, setActiveTask }: DroppableColumnProps) {
+
+export function DroppableColumn({ columnId, title, tasks, setActiveTask, onCardClick }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
   return (
@@ -49,6 +51,7 @@ export function DroppableColumn({ columnId, title, tasks, setActiveTask }: Dropp
                   key={`${columnId}-${task.id}`}
                   task={task}
                   setActiveTask={setActiveTask}
+                  onClick={() => onCardClick?.(task.id)}
                 />
               ))
             )}

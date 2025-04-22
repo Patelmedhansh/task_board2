@@ -16,6 +16,7 @@ import { DroppableColumn } from "../components/DroppableColumn";
 import { DraggableCard } from "../components/DraggableCard";
 import { useTasks } from "../hooks/useTasks";
 import { Task } from "../types/tasks";
+import TaskDetailsModal from "../components/TasksDetailsModal";
 
 export default function Dashboard() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -30,6 +31,8 @@ export default function Dashboard() {
   const [subcategoryMap, setSubcategoryMap] = useState<
     Record<string, string[]>
   >({});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -214,6 +217,10 @@ export default function Dashboard() {
                     title={columnMap[col]}
                     tasks={tasksByStatus[col] || []}
                     setActiveTask={setActiveTask}
+                    onCardClick={(id) => {
+                      setSelectedTaskId(id);
+                      setModalOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -231,6 +238,13 @@ export default function Dashboard() {
               <p className="text-center mt-4 text-gray-500">
                 Loading more tasks...
               </p>
+            )}
+            {selectedTaskId && (
+              <TaskDetailsModal
+                taskId={selectedTaskId}
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+              />
             )}
           </div>
         </div>
