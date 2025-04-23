@@ -2,26 +2,39 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
 
+// Define column/status keys and their types
+export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
+export type StatusKey = (typeof statusKeyArray)[number];
+
 export function useTasks() {
-  const [tasksByStatus, setTasksByStatus] = useState<Record<string, Task[]>>({
-    "to-do": [],
-    "in-progress": [],
-    done: [],
-  });
+  const [tasksByStatus, setTasksByStatus] = useState<Record<StatusKey, Task[]>>(
+    {
+      "to-do": [],
+      "in-progress": [],
+      done: [],
+    }
+  );
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
+    null
+  );
+  const [dateRange, setDateRange] = useState<{
+    from: string | null;
+    to: string | null;
+  }>({ from: null, to: null });
   const [limit, setLimit] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
 
-  const [totalCountByStatus, setTotalCountByStatus] = useState<Record<string, number>>({
+  const [totalCountByStatus, setTotalCountByStatus] = useState<
+    Record<StatusKey, number>
+  >({
     "to-do": 0,
     "in-progress": 0,
-    "done": 0,
+    done: 0,
   });
 
   const pageSize = 10;
@@ -35,65 +48,88 @@ export function useTasks() {
       done: [],
     });
   };
-  
+
+  // Convert UI/status key ("to-do") to DB status ("To Do")
+  const statusKeyToStatusLabel = (key: StatusKey) =>
+    key === "to-do" ? "To Do" : key === "in-progress" ? "In Progress" : "Done";
+
+  // Convert DB status ("To Do") to UI/status key ("to-do")
+  const statusLabelToStatusKey = (label: string): StatusKey => {
+    if (label === "To Do") return "to-do";
+    if (label === "In Progress") return "in-progress";
+    return "done";
+  };
 
   const fetchTasksByStatus = async (
     status: string,
     filters: {
-      categoryFilter?: string | null,
-      subcategoryFilter?: string | null,
-      dateRange?: { from: string | null; to: string | null },
-      searchQuery?: string | null,
+      categoryFilter?: string | null;
+      subcategoryFilter?: string | null;
+      dateRange?: { from: string | null; to: string | null };
+      searchQuery?: string | null;
+      limit?: number | null;
+      offset?: number;
     },
     reset = false
-  ) => {
-    const offset = reset ? 0 : page * pageSize;
-  
+  ): Promise<Task[]> => {
+    const offset =
+      filters.offset ??
+      (reset ? 0 : page * (filters.limit ?? limit ?? pageSize));
+    const limitCount = filters.limit ?? limit ?? pageSize;
+
     const { data, error } = await supabase.rpc("get_tasks_by_status", {
       task_status: status,
       category_filter: filters.categoryFilter,
       subcategory_filter: filters.subcategoryFilter,
       date_from: filters.dateRange?.from,
       date_to: filters.dateRange?.to,
-      limit_count: limit ?? pageSize,
+      limit_count: limitCount,
       offset_count: offset,
       search_query: filters.searchQuery,
     });
-  
-    return !error && data ? data : [];
+
+    return !error && data ? (data as Task[]) : [];
   };
-  
+
+  const statusKeyArray = ["to-do", "in-progress", "done"] as const;
+  type StatusKey = (typeof statusKeyArray)[number];
+  const statusMap: Record<StatusKey, string> = {
+    "to-do": "To Do",
+    "in-progress": "In Progress",
+    done: "Done",
+  };
 
   const loadMoreTasks = async (reset = false) => {
     setLoading(true);
   
-    const statuses = ["To Do", "In Progress", "Done"];
-    let newTasksByStatus = reset
-      ? { "to-do": [], "in-progress": [], done: [] }
+    const statuses = ["To Do", "In Progress", "Done"] as const;
+    let newTasksByStatus: Record<StatusKey, Task[]> = reset
+      ? { "to-do": [], "in-progress": [], "done": [] }
       : { ...tasksByStatus };
   
     let tasksFetched = false;
   
     for (const status of statuses) {
-      const key = status.toLowerCase().replace(" ", "-");
+      const key = status.toLowerCase().replace(" ", "-") as StatusKey;
   
-      if (!statusFilter || status === statusFilter) {
-        const fetchedTasks = await fetchTasksByStatus(
-          status,
-          {
-            categoryFilter,
-            subcategoryFilter,
-            dateRange,
-            searchQuery,
-          },
-          reset
-        );
-        if (fetchedTasks.length > 0) tasksFetched = true;
+      // Build filters object: only apply all filters to selected status, null for others
+      const isSelected = statusFilter === null || statusFilter === status;
   
-        newTasksByStatus[key] = reset
-          ? fetchedTasks
-          : [...(tasksByStatus[key] || []), ...fetchedTasks];
-      }
+      const filtersToApply = {
+        categoryFilter: isSelected ? categoryFilter : null,
+        subcategoryFilter: isSelected ? subcategoryFilter : null,
+        dateRange: isSelected ? dateRange : { from: null, to: null },
+        searchQuery: isSelected ? searchQuery : null,
+        limit,
+        offset: reset ? 0 : page * (limit ?? pageSize),
+      };
+  
+      const fetchedTasks = await fetchTasksByStatus(status, filtersToApply, reset);
+      if (fetchedTasks.length > 0) tasksFetched = true;
+  
+      newTasksByStatus[key] = reset
+        ? fetchedTasks
+        : [...(tasksByStatus[key] || []), ...fetchedTasks];
     }
   
     setTasksByStatus(newTasksByStatus);
@@ -104,13 +140,27 @@ export function useTasks() {
   };  
   
 
-  const moveTask = async (taskId: string, sourceCol: string, destCol: string, destIndex: number) => {
-    const task = tasksByStatus[sourceCol].find((t) => t.id.toString() === taskId);
+  const moveTask = async (
+    taskId: string,
+    sourceCol: StatusKey,
+    destCol: StatusKey,
+    destIndex: number
+  ) => {
+    const task = tasksByStatus[sourceCol].find(
+      (t) => t.id.toString() === taskId
+    );
     if (!task) return;
 
-    const newSourceTasks = tasksByStatus[sourceCol].filter((t) => t.id.toString() !== taskId);
-    const updatedTask: Task = { ...task, status: convertColumnIdToStatus(destCol) };
-    const newDestTasks = tasksByStatus[destCol].filter((t) => t.id.toString() !== taskId);
+    const newSourceTasks = tasksByStatus[sourceCol].filter(
+      (t) => t.id.toString() !== taskId
+    );
+    const updatedTask: Task = {
+      ...task,
+      status: statusKeyToStatusLabel(destCol),
+    };
+    const newDestTasks = tasksByStatus[destCol].filter(
+      (t) => t.id.toString() !== taskId
+    );
     newDestTasks.splice(destIndex, 0, updatedTask);
 
     const updated = {
@@ -130,38 +180,30 @@ export function useTasks() {
     }
   };
 
-  const convertColumnIdToStatus = (columnId: string) => {
-    switch (columnId) {
-      case "to-do": return "To Do";
-      case "in-progress": return "In Progress";
-      case "done": return "Done";
-      default: return columnId;
-    }
-  };
-
-  const findColumnOfTask = (taskId: string): string | null => {
-    for (const [colId, taskList] of Object.entries(tasksByStatus)) {
-      if (taskList.some((task) => task.id.toString() === taskId)) {
-        return colId;
+  // Find column for a task (returns StatusKey or null)
+  const findColumnOfTask = (taskId: string): StatusKey | null => {
+    for (const key of statusKeyArray) {
+      if (tasksByStatus[key].some((task) => task.id.toString() === taskId)) {
+        return key;
       }
     }
     return null;
   };
 
   const fetchStatusWiseCounts = async () => {
-    const statusLabels: Record<string, string> = {
+    const statusLabels: Record<StatusKey, string> = {
       "to-do": "To Do",
       "in-progress": "In Progress",
-      "done": "Done",
+      done: "Done",
     };
 
-    const counts: Record<string, number> = {
+    const counts: Record<StatusKey, number> = {
       "to-do": 0,
       "in-progress": 0,
-      "done": 0,
+      done: 0,
     };
 
-    for (const key of Object.keys(statusLabels)) {
+    for (const key of statusKeyArray) {
       let query = supabase
         .from("projects")
         .select("*", { count: "exact", head: true })
@@ -170,7 +212,9 @@ export function useTasks() {
       if (categoryFilter) query = query.eq("category", categoryFilter);
       if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
       if (dateRange?.from && dateRange?.to) {
-        query = query.gte("created_at", dateRange.from).lte("created_at", dateRange.to);
+        query = query
+          .gte("created_at", dateRange.from)
+          .lte("created_at", dateRange.to);
       }
       if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
 
@@ -204,5 +248,6 @@ export function useTasks() {
     setSearchQuery,
     fetchStatusWiseCounts,
     totalCountByStatus,
+    statusKeyArray, // Export for Dashboard map/iteration if needed
   };
 }

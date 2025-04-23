@@ -4,27 +4,41 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import FilterBar from "../components/FilterBar";
 import { Task } from "../types/tasks";
+import TaskDetailsModal from "../components/TasksDetailsModal";
 
 export default function Discard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [discardedTasks, setDiscardedTasks] = useState<Task[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
+    null
+  );
+  const [dateRange, setDateRange] = useState<{
+    from: string | null;
+    to: string | null;
+  }>({ from: null, to: null });
   const [limit, setLimit] = useState<number | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
+  const [subcategoryMap, setSubcategoryMap] = useState<
+    Record<string, string[]>
+  >({});
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
-
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDiscardedTasks();
     getUser();
     fetchCategoryData();
-  }, [statusFilter, categoryFilter, subcategoryFilter, dateRange, limit, searchQuery]);
+  }, [
+    categoryFilter,
+    subcategoryFilter,
+    dateRange,
+    limit,
+    searchQuery,
+  ]);
 
   const getUser = async () => {
     const {
@@ -59,7 +73,6 @@ export default function Discard() {
   const fetchDiscardedTasks = async () => {
     let query = supabase.from("projects").select("*").eq("status", "Discarded");
 
-    if (statusFilter) query = query.eq("status", statusFilter);
     if (categoryFilter) query = query.eq("category", categoryFilter);
     if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
     if (dateRange.from) query = query.gte("created_at", dateRange.from);
@@ -100,8 +113,6 @@ export default function Discard() {
 
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
             <FilterBar
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               subcategoryFilter={subcategoryFilter}
@@ -127,15 +138,24 @@ export default function Discard() {
               {discardedTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="border border-gray-300 p-4 rounded bg-white shadow-sm"
+                  className="border border-gray-300 p-4 rounded bg-white shadow-sm cursor-pointer hover:shadow"
+                  onClick={() => {
+                    setSelectedTaskId(task.id.toString());
+                    setModalOpen(true);
+                  }}
                 >
-                  <h2 className="font-semibold pb-2">{task.title}</h2>
-                  <p className="text-sm text-gray-600 line-clamp-1">
-                    {task.description}
-                  </p>
+                  <h2 className="font-semibold">{task.title}</h2>
+                  <p className="text-sm text-gray-600 line-clamp-1">{task.description}</p>
                 </div>
               ))}
             </div>
+            {selectedTaskId && (
+              <TaskDetailsModal
+                taskId={selectedTaskId}
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+              />
+            )}
           </div>
         </div>
       </div>

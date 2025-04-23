@@ -6,9 +6,10 @@ import {
 import NoTask from "../assets/notask.png";
 import { DraggableCard } from "./DraggableCard";
 import { Task } from "../types/tasks";
+import { StatusKey } from "../hooks/useTasks"; // <-- import StatusKey
 
 interface DroppableColumnProps {
-  columnId: string;
+  columnId: StatusKey;
   title: string;
   tasks: Task[];
   setActiveTask: (task: Task) => void;
@@ -64,7 +65,11 @@ export function DroppableColumn({
                   key={`${columnId}-${task.id}`}
                   task={task}
                   setActiveTask={setActiveTask}
-                  onClick={() => onCardClick?.(task.id)}
+                  onClick={() => {
+                    if (!isDragging) {
+                      onCardClick?.(task.id);
+                    }
+                  }}
                 />
               ))
             )}

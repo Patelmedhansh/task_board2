@@ -24,14 +24,21 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
+    null
+  );
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
+  const [subcategoryMap, setSubcategoryMap] = useState<
+    Record<string, string[]>
+  >({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
-  // const sensors = useSensors(useSensor(PointerSensor));
+  const [isDragging, setIsDragging] = useState(false);
+  const [mouseDownOnCard, setMouseDownOnCard] = useState(false);
+  const statusKeys = ["to-do", "in-progress", "done"] as const;
+  type StatusKey = (typeof statusKeys)[number];
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -39,6 +46,8 @@ export default function Dashboard() {
   const {
     tasksByStatus,
     setTasksByStatus,
+    statusFilter,
+    setStatusFilter,
     categoryFilter,
     setCategoryFilter,
     subcategoryFilter: globalSubcategoryFilter,
@@ -59,27 +68,36 @@ export default function Dashboard() {
     totalCountByStatus,
   } = useTasks();
 
-  const columnMap: Record<string, string> = {
+  const columnMap: Record<StatusKey, string> = {
     "to-do": "To Do",
     "in-progress": "In Progress",
     done: "Done",
   };
 
-  const columns = Object.keys(columnMap);
-
+  // Load tasks when any filter changes
   useEffect(() => {
     resetPagination();
     loadMoreTasks(true);
     fetchStatusWiseCounts();
     getUser();
-  }, [categoryFilter, subcategoryFilter, dateRange, searchQuery]);
+    // eslint-disable-next-line
+  }, [
+    statusFilter,
+    categoryFilter,
+    subcategoryFilter,
+    dateRange,
+    searchQuery,
+    limit,
+  ]);
 
+  // Infinite scroll logic
   useEffect(() => {
     const scrollEl = scrollRef.current;
     const handleScroll = () => {
       if (
         scrollEl &&
-        scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 300 &&
+        scrollEl.scrollTop + scrollEl.clientHeight >=
+          scrollEl.scrollHeight - 300 &&
         !loading &&
         hasMore
       ) {
@@ -88,8 +106,9 @@ export default function Dashboard() {
     };
     scrollEl?.addEventListener("scroll", handleScroll);
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore]);
+  }, [loading, hasMore, loadMoreTasks]);
 
+  // Load category/subcategory options for filters
   useEffect(() => {
     const fetchCategoryData = async () => {
       const { data, error } = await supabase
@@ -117,6 +136,7 @@ export default function Dashboard() {
     fetchCategoryData();
   }, []);
 
+  // DRAG & DROP HANDLER
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setIsDragging(false);
@@ -126,13 +146,16 @@ export default function Dashboard() {
     const activeId = active.id.toString();
     const overId = over.id.toString();
 
-    const sourceCol = findColumnOfTask(activeId);
-    const destCol = findColumnOfTask(overId) || overId;
+    const sourceCol = findColumnOfTask(activeId) as StatusKey | null;
+    const destCol =
+      (findColumnOfTask(overId) as StatusKey | null) || (over.id as StatusKey);
 
     if (!sourceCol || !destCol) return;
 
     const destinationTasks = tasksByStatus[destCol];
-    let destIndex = destinationTasks.findIndex((t) => t.id.toString() === overId);
+    let destIndex = destinationTasks.findIndex(
+      (t) => t.id.toString() === overId
+    );
 
     if (destIndex === -1) {
       destIndex = destinationTasks.length;
@@ -151,6 +174,7 @@ export default function Dashboard() {
     fetchStatusWiseCounts();
   };
 
+  // User Info
   const getUser = async () => {
     const {
       data: { user },
@@ -158,10 +182,16 @@ export default function Dashboard() {
     if (user) setUserEmail(user?.email ?? "");
   };
 
+  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
+
+  // Click/drag detection for modal
+  const handleCardMouseDown = () => setMouseDownOnCard(true);
+  const handleCardMouseUp = () =>
+    setTimeout(() => setMouseDownOnCard(false), 0);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -183,10 +213,11 @@ export default function Dashboard() {
         <div className="flex-1 p-6 bg-gray-100 mt-20">
           <h1 className="font-bold text-2xl mb-2">Dashboard</h1>
 
+          {/* Filter Bar */}
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
             <FilterBar
-              statusFilter={null}
-              setStatusFilter={() => {}}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               subcategoryFilter={subcategoryFilter}
@@ -202,7 +233,11 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="overflow-y-auto max-h-[calc(100vh-12rem)]" ref={scrollRef}>
+          {/* Columns */}
+          <div
+            className="overflow-y-auto max-h-[calc(100vh-12rem)]"
+            ref={scrollRef}
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -210,13 +245,13 @@ export default function Dashboard() {
               onDragEnd={onDragEnd}
             >
               <div className="grid grid-cols-3 gap-4 mt-4">
-                {columns.map((col) => (
+                {statusKeys.map((col: StatusKey) => (
                   <DroppableColumn
                     key={col}
                     columnId={col}
                     title={columnMap[col]}
-                    tasks={tasksByStatus[col] || []}
-                    totalCount={totalCountByStatus[col] || 0}
+                    tasks={tasksByStatus[col]}
+                    totalCount={totalCountByStatus[col]}
                     setActiveTask={setActiveTask}
                     isDragging={isDragging}
                     onCardClick={(id) => {
@@ -230,13 +265,18 @@ export default function Dashboard() {
               </div>
               <DragOverlay>
                 {activeTask && (
-                  <DraggableCard task={activeTask} setActiveTask={setActiveTask} />
+                  <DraggableCard
+                    task={activeTask}
+                    setActiveTask={setActiveTask}
+                  />
                 )}
               </DragOverlay>
             </DndContext>
 
             {loading && (
-              <p className="text-center mt-4 text-gray-500">Loading more tasks...</p>
+              <p className="text-center mt-4 text-gray-500">
+                Loading more tasks...
+              </p>
             )}
             {selectedTaskId && (
               <TaskDetailsModal
