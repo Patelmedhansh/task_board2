@@ -8,7 +8,7 @@ export function useTasks() {
     "in-progress": [],
     done: [],
   });
-
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({ from: null, to: null });
@@ -29,47 +29,80 @@ export function useTasks() {
   const resetPagination = () => {
     setPage(0);
     setHasMore(true);
-  };
-
-  const fetchTasksByStatus = async (status: string, reset = false) => {
-    const offset = reset ? 0 : page * pageSize;
-
-    const { data, error } = await supabase.rpc("get_tasks_by_status", {
-      task_status: status,
-      category_filter: categoryFilter,
-      subcategory_filter: subcategoryFilter,
-      date_from: dateRange.from,
-      date_to: dateRange.to,
-      limit_count: limit ?? pageSize,
-      offset_count: offset,
-      search_query: searchQuery,
-    });
-
-    return !error && data ? data : [];
-  };
-
-  const loadMoreTasks = async (reset = false) => {
-    setLoading(true);
-
-    const statuses = ["To Do", "In Progress", "Done"];
-    const result: Record<string, Task[]> = {
+    setTasksByStatus({
       "to-do": [],
       "in-progress": [],
       done: [],
-    };
+    });
+  };
+  
 
+  const fetchTasksByStatus = async (
+    status: string,
+    filters: {
+      categoryFilter?: string | null,
+      subcategoryFilter?: string | null,
+      dateRange?: { from: string | null; to: string | null },
+      searchQuery?: string | null,
+    },
+    reset = false
+  ) => {
+    const offset = reset ? 0 : page * pageSize;
+  
+    const { data, error } = await supabase.rpc("get_tasks_by_status", {
+      task_status: status,
+      category_filter: filters.categoryFilter,
+      subcategory_filter: filters.subcategoryFilter,
+      date_from: filters.dateRange?.from,
+      date_to: filters.dateRange?.to,
+      limit_count: limit ?? pageSize,
+      offset_count: offset,
+      search_query: filters.searchQuery,
+    });
+  
+    return !error && data ? data : [];
+  };
+  
+
+  const loadMoreTasks = async (reset = false) => {
+    setLoading(true);
+  
+    const statuses = ["To Do", "In Progress", "Done"];
+    let newTasksByStatus = reset
+      ? { "to-do": [], "in-progress": [], done: [] }
+      : { ...tasksByStatus };
+  
+    let tasksFetched = false;
+  
     for (const status of statuses) {
       const key = status.toLowerCase().replace(" ", "-");
-      result[key] = await fetchTasksByStatus(status, reset);
+  
+      if (!statusFilter || status === statusFilter) {
+        const fetchedTasks = await fetchTasksByStatus(
+          status,
+          {
+            categoryFilter,
+            subcategoryFilter,
+            dateRange,
+            searchQuery,
+          },
+          reset
+        );
+        if (fetchedTasks.length > 0) tasksFetched = true;
+  
+        newTasksByStatus[key] = reset
+          ? fetchedTasks
+          : [...(tasksByStatus[key] || []), ...fetchedTasks];
+      }
     }
-
-    setTasksByStatus(result);
-    if (result["to-do"].length < pageSize && result["in-progress"].length < pageSize && result["done"].length < pageSize) {
-      setHasMore(false);
-    }
+  
+    setTasksByStatus(newTasksByStatus);
+  
+    if (!tasksFetched) setHasMore(false);
     setPage((prev) => (reset ? 1 : prev + 1));
     setLoading(false);
-  };
+  };  
+  
 
   const moveTask = async (taskId: string, sourceCol: string, destCol: string, destIndex: number) => {
     const task = tasksByStatus[sourceCol].find((t) => t.id.toString() === taskId);
@@ -151,6 +184,8 @@ export function useTasks() {
   return {
     tasksByStatus,
     setTasksByStatus,
+    statusFilter,
+    setStatusFilter,
     categoryFilter,
     setCategoryFilter,
     subcategoryFilter,

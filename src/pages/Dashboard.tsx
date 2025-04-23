@@ -31,7 +31,10 @@ export default function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  // const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const {
     tasksByStatus,
