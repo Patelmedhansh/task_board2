@@ -2,7 +2,6 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
 
-// Define column/status keys and their types
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
 
@@ -49,16 +48,8 @@ export function useTasks() {
     });
   };
 
-  // Convert UI/status key ("to-do") to DB status ("To Do")
   const statusKeyToStatusLabel = (key: StatusKey) =>
     key === "to-do" ? "To Do" : key === "in-progress" ? "In Progress" : "Done";
-
-  // Convert DB status ("To Do") to UI/status key ("to-do")
-  const statusLabelToStatusKey = (label: string): StatusKey => {
-    if (label === "To Do") return "to-do";
-    if (label === "In Progress") return "in-progress";
-    return "done";
-  };
 
   const fetchTasksByStatus = async (
     status: string,
@@ -93,11 +84,6 @@ export function useTasks() {
 
   const statusKeyArray = ["to-do", "in-progress", "done"] as const;
   type StatusKey = (typeof statusKeyArray)[number];
-  const statusMap: Record<StatusKey, string> = {
-    "to-do": "To Do",
-    "in-progress": "In Progress",
-    done: "Done",
-  };
 
   const loadMoreTasks = async (reset = false) => {
     setLoading(true);
@@ -112,7 +98,6 @@ export function useTasks() {
     for (const status of statuses) {
       const key = status.toLowerCase().replace(" ", "-") as StatusKey;
   
-      // Build filters object: only apply all filters to selected status, null for others
       const isSelected = statusFilter === null || statusFilter === status;
   
       const filtersToApply = {
@@ -180,7 +165,6 @@ export function useTasks() {
     }
   };
 
-  // Find column for a task (returns StatusKey or null)
   const findColumnOfTask = (taskId: string): StatusKey | null => {
     for (const key of statusKeyArray) {
       if (tasksByStatus[key].some((task) => task.id.toString() === taskId)) {
@@ -194,37 +178,37 @@ export function useTasks() {
     const statusLabels: Record<StatusKey, string> = {
       "to-do": "To Do",
       "in-progress": "In Progress",
-      done: "Done",
+      "done": "Done",
     };
-
+  
     const counts: Record<StatusKey, number> = {
       "to-do": 0,
       "in-progress": 0,
-      done: 0,
+      "done": 0,
     };
-
+  
     for (const key of statusKeyArray) {
       let query = supabase
         .from("projects")
         .select("*", { count: "exact", head: true })
         .eq("status", statusLabels[key]);
-
-      if (categoryFilter) query = query.eq("category", categoryFilter);
-      if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
-      if (dateRange?.from && dateRange?.to) {
-        query = query
-          .gte("created_at", dateRange.from)
-          .lte("created_at", dateRange.to);
+  
+      if (statusFilter === null || statusFilter === statusLabels[key]) {
+        if (categoryFilter) query = query.eq("category", categoryFilter);
+        if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
+        if (dateRange?.from && dateRange?.to) {
+          query = query.gte("created_at", dateRange.from).lte("created_at", dateRange.to);
+        }
+        if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
       }
-      if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
-
+  
       const { count } = await query;
       if (typeof count === "number") counts[key] = count;
     }
-
+  
     setTotalCountByStatus(counts);
   };
-
+  
   return {
     tasksByStatus,
     setTasksByStatus,
@@ -248,6 +232,6 @@ export function useTasks() {
     setSearchQuery,
     fetchStatusWiseCounts,
     totalCountByStatus,
-    statusKeyArray, // Export for Dashboard map/iteration if needed
+    statusKeyArray,
   };
 }

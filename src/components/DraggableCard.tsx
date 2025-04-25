@@ -5,7 +5,7 @@ import { Task } from "../types/tasks";
 interface DraggableCardProps {
   task: Task;
   setActiveTask: (task: Task) => void;
-  onClick?: () => void;
+  onClick?: () => void; // <- keep this!
 }
 
 export function DraggableCard({ task, setActiveTask, onClick }: DraggableCardProps) {
@@ -24,7 +24,6 @@ export function DraggableCard({ task, setActiveTask, onClick }: DraggableCardPro
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    cursor: "pointer",
   };
 
   return (
@@ -33,15 +32,10 @@ export function DraggableCard({ task, setActiveTask, onClick }: DraggableCardPro
       {...attributes}
       {...listeners}
       style={style}
-      className="border border-gray-300 p-5 rounded shadow hover:shadow-md bg-white"
-      // Set the active task on pointer down (for drag context)
-      onPointerDown={() => setActiveTask(task)}
-      // Only fire onClick (open modal) if not dragging
-      onClick={(e) => {
-        if (!isDragging && onClick) {
-          e.stopPropagation();
-          onClick();
-        }
+      className="border border-gray-300 p-5 rounded shadow hover:shadow-md cursor-pointer bg-white"
+      onClick={() => {
+        setActiveTask(task);
+        if (onClick) onClick();
       }}
     >
       <h2 className="font-semibold line-clamp-1 pb-2">{task.title}</h2>

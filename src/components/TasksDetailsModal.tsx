@@ -3,6 +3,9 @@ import { supabase } from "../supabaseClient";
 import { Dialog, DialogPanel, Transition } from "@headlessui/react";
 import { toast } from "react-hot-toast";
 import { Comment } from "../types/comments";
+import { askAIForTask } from "../services/aiSuggestions";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 
 interface TaskDetailsModalProps {
   taskId: string | null;
@@ -22,10 +25,26 @@ export default function TaskDetailsModal({
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState<string>("");
-  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(
-    null
-  );
-  const [replyContent, setReplyContent] = useState<string>("");
+  // const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(
+  //   null
+  // );
+  // const [replyContent, setReplyContent] = useState<string>("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+
+  const handleAskAI = async () => {
+    setAiLoading(true);
+    try {
+      const suggestion = await askAIForTask(task);
+      setAiAnswer(suggestion);
+    } catch (e) {
+      toast.error("AI suggestion failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleCloseSuggestion = () => setAiAnswer(null);
 
   useEffect(() => {
     if (taskId && isOpen) {
@@ -106,7 +125,7 @@ export default function TaskDetailsModal({
   const handleStartEdit = (comment: Comment) => {
     setEditingCommentId(comment.id);
     setEditingContent(comment.content);
-    setReplyingToCommentId(null);
+    // setReplyingToCommentId(null);
   };
 
   const handleSaveEdit = async (id: string) => {
@@ -124,37 +143,37 @@ export default function TaskDetailsModal({
     }
   };
 
-  const handleStartReply = (id: string) => {
-    setReplyingToCommentId(id);
-    setReplyContent("");
-    setEditingCommentId(null);
-  };
+  // const handleStartReply = (id: string) => {
+  //   setReplyingToCommentId(id);
+  //   setReplyContent("");
+  //   setEditingCommentId(null);
+  // };
 
-  const handleReply = async (parent_id: string) => {
-    setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  // const handleReply = async (parent_id: string) => {
+  //   setLoading(true);
+  //   const {
+  //     data: { user },
+  //   } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("comments").insert([
-      {
-        task_id: taskId,
-        content: replyContent,
-        user_email: user?.email || "Anonymous",
-        parent_id,
-      },
-    ]);
+  //   const { error } = await supabase.from("comments").insert([
+  //     {
+  //       task_id: taskId,
+  //       content: replyContent,
+  //       user_email: user?.email || "Anonymous",
+  //       parent_id,
+  //     },
+  //   ]);
 
-    if (!error) {
-      toast.success("Reply added!");
-      setReplyingToCommentId(null);
-      setReplyContent("");
-      fetchComments();
-    } else {
-      toast.error("Failed to add reply");
-    }
-    setLoading(false);
-  };
+  //   if (!error) {
+  //     toast.success("Reply added!");
+  //     setReplyingToCommentId(null);
+  //     setReplyContent("");
+  //     fetchComments();
+  //   } else {
+  //     toast.error("Failed to add reply");
+  //   }
+  //   setLoading(false);
+  // };
 
   const renderComments = (parentId: string | null = null) =>
     comments
@@ -194,12 +213,12 @@ export default function TaskDetailsModal({
                 {new Date(c.created_at).toLocaleString()}
               </span>
               <div className="mt-1 flex gap-2 text-xs">
-                <button
+                {/* <button
                   className="hover:underline"
                   onClick={() => handleStartReply(c.id)}
                 >
                   Reply
-                </button>
+                </button> */}
                 <button
                   className="hover:underline"
                   onClick={() => handleStartEdit(c)}
@@ -216,7 +235,7 @@ export default function TaskDetailsModal({
             </>
           )}
 
-          {replyingToCommentId === c.id && (
+          {/* {replyingToCommentId === c.id && (
             <div className="mt-2">
               <textarea
                 className="w-full border rounded p-2 text-sm mb-1"
@@ -240,7 +259,7 @@ export default function TaskDetailsModal({
                 </button>
               </div>
             </div>
-          )}
+          )} */}
 
           <div className="pl-6">{renderComments(c.id)}</div>
         </div>
@@ -269,7 +288,30 @@ export default function TaskDetailsModal({
                 <div className="text-sm text-gray-700 whitespace-pre-line mb-4 max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
                   {task.description}
                 </div>
-                <h4 className="font-semibold mb-2">Comments</h4>
+                <button
+                  onClick={handleAskAI}
+                  disabled={aiLoading}
+                  className="mt-4 mb-1 flex items-center gap-2 font-semibold border border-orange-600 rounded text-orange-600 pl-3 pr-3 pt-1 pb-1 hover:text-white hover:bg-orange-600"
+                >
+                  <FontAwesomeIcon icon={faEye} />{" "}
+                  {aiLoading ? "Generating..." : "Write with AI"}
+                </button>
+                {aiAnswer && (
+                  <div className="relative rounded border border-gray-300 p-3 text-sm leading-6 mb-4">
+                    <button
+                      onClick={handleCloseSuggestion}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-black text-sm"
+                      aria-label="Close suggestion"
+                    >
+                      &times;
+                    </button>
+                    <h4 className="mb-2 font-semibold">AI suggestion</h4>
+                    <p className="text-gray-700 text-sm whitespace-pre-line">
+                      {aiAnswer}
+                    </p>
+                  </div>
+                )}
+                <h4 className="font-semibold mt-4 mb-2">Comments</h4>
                 <textarea
                   className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
                   placeholder="Add Comment..."
@@ -312,50 +354,38 @@ export default function TaskDetailsModal({
                     </select>
                   </div>
                   <div className="space-y-3 text-xs">
-                  <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Amount Raw Value
-                      </span>
+                    <div className="flex justify-between gap-x-12">
+                      <span className="mr-8">Amount Raw Value</span>
                       <span className="font-normal">
                         {task.amount_rawValue}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Amount Display Value
-                      </span>
+                      <span className="mr-8">Amount Display Value</span>
                       <span className="font-normal">
                         {task.amount_displayValue}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Hourly Budget Type
-                      </span>
+                      <span className="mr-8">Hourly Budget Type</span>
                       <span className="font-normal">
                         {task.hourlyBudgetType}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Hourly Budget Min Value
-                      </span>
+                      <span className="mr-8">Hourly Budget Min Value</span>
                       <span className="font-normal">
                         {task.hourlyBudgetMin_rawValue}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Hourly Budget Max Value
-                      </span>
+                      <span className="mr-8">Hourly Budget Max Value</span>
                       <span className="font-normal">
                         {task.hourlyBudgetMax_rawValue}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
-                      <span className="mr-8">
-                        Total Applicant
-                      </span>
+                      <span className="mr-8">Total Applicant</span>
                       <span className="font-normal">
                         {task.totalApplicants}
                       </span>

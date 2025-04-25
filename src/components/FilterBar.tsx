@@ -6,8 +6,8 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
 interface FilterBarProps {
-  statusFilter?: string | null; // <-- Made optional!
-  setStatusFilter?: Dispatch<SetStateAction<string | null>>; // <-- Made optional!
+  statusFilter?: string | null; 
+  setStatusFilter?: Dispatch<SetStateAction<string | null>>;
   categoryFilter: string | null;
   setCategoryFilter: Dispatch<SetStateAction<string | null>>;
   subcategoryFilter: string | null;
@@ -58,7 +58,6 @@ export default function FilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
-      {/* Search */}
       <div className="relative">
         <span className="absolute inset-y-0 left-3 flex items-center text-gray-400">
           <FontAwesomeIcon icon={faSearch} />
@@ -72,7 +71,6 @@ export default function FilterBar({
         />
       </div>
 
-      {/* Status Dropdown: Only show if both statusFilter and setStatusFilter exist */}
       {typeof statusFilter !== "undefined" && typeof setStatusFilter !== "undefined" && (
         <select
           onChange={(e) => setStatusFilter(e.target.value || null)}
@@ -86,7 +84,6 @@ export default function FilterBar({
         </select>
       )}
 
-      {/* Category */}
       <select
         onChange={(e) => setCategoryFilter(e.target.value || null)}
         className="border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
@@ -100,7 +97,6 @@ export default function FilterBar({
         ))}
       </select>
 
-      {/* Subcategory */}
       {categoryFilter && (
         <select
           onChange={(e) => setSubcategoryFilter(e.target.value || null)}
@@ -116,7 +112,6 @@ export default function FilterBar({
         </select>
       )}
 
-      {/* Date Range */}
       <div className="relative">
         <button
           onClick={() => setCalendarOpen(!calendarOpen)}
@@ -148,7 +143,6 @@ export default function FilterBar({
         )}
       </div>
 
-      {/* Limit */}
       <select
         onChange={(e) => setLimit(Number(e.target.value) || null)}
         className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"

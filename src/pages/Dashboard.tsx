@@ -35,7 +35,6 @@ export default function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const [isDragging, setIsDragging] = useState(false);
-  const [mouseDownOnCard, setMouseDownOnCard] = useState(false);
   const statusKeys = ["to-do", "in-progress", "done"] as const;
   type StatusKey = (typeof statusKeys)[number];
 
@@ -50,8 +49,6 @@ export default function Dashboard() {
     setStatusFilter,
     categoryFilter,
     setCategoryFilter,
-    subcategoryFilter: globalSubcategoryFilter,
-    setSubcategoryFilter: setGlobalSubcategoryFilter,
     dateRange,
     setDateRange,
     limit,
@@ -74,13 +71,11 @@ export default function Dashboard() {
     done: "Done",
   };
 
-  // Load tasks when any filter changes
   useEffect(() => {
     resetPagination();
     loadMoreTasks(true);
     fetchStatusWiseCounts();
     getUser();
-    // eslint-disable-next-line
   }, [
     statusFilter,
     categoryFilter,
@@ -90,7 +85,6 @@ export default function Dashboard() {
     limit,
   ]);
 
-  // Infinite scroll logic
   useEffect(() => {
     const scrollEl = scrollRef.current;
     const handleScroll = () => {
@@ -108,7 +102,6 @@ export default function Dashboard() {
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore, loadMoreTasks]);
 
-  // Load category/subcategory options for filters
   useEffect(() => {
     const fetchCategoryData = async () => {
       const { data, error } = await supabase
@@ -136,7 +129,6 @@ export default function Dashboard() {
     fetchCategoryData();
   }, []);
 
-  // DRAG & DROP HANDLER
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setIsDragging(false);
@@ -174,7 +166,6 @@ export default function Dashboard() {
     fetchStatusWiseCounts();
   };
 
-  // User Info
   const getUser = async () => {
     const {
       data: { user },
@@ -182,16 +173,10 @@ export default function Dashboard() {
     if (user) setUserEmail(user?.email ?? "");
   };
 
-  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
-
-  // Click/drag detection for modal
-  const handleCardMouseDown = () => setMouseDownOnCard(true);
-  const handleCardMouseUp = () =>
-    setTimeout(() => setMouseDownOnCard(false), 0);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -213,7 +198,6 @@ export default function Dashboard() {
         <div className="flex-1 p-6 bg-gray-100 mt-20">
           <h1 className="font-bold text-2xl mb-2">Dashboard</h1>
 
-          {/* Filter Bar */}
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
             <FilterBar
               statusFilter={statusFilter}
@@ -233,7 +217,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Columns */}
           <div
             className="overflow-y-auto max-h-[calc(100vh-12rem)]"
             ref={scrollRef}
@@ -255,11 +238,9 @@ export default function Dashboard() {
                     setActiveTask={setActiveTask}
                     isDragging={isDragging}
                     onCardClick={(id) => {
-                      if (!isDragging) {
-                        setSelectedTaskId(id);
-                        setModalOpen(true);
-                      }
-                    }}
+                      setSelectedTaskId(id);
+                      setModalOpen(true);
+                    }}                    
                   />
                 ))}
               </div>

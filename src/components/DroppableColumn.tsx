@@ -6,7 +6,7 @@ import {
 import NoTask from "../assets/notask.png";
 import { DraggableCard } from "./DraggableCard";
 import { Task } from "../types/tasks";
-import { StatusKey } from "../hooks/useTasks"; // <-- import StatusKey
+import { StatusKey } from "../hooks/useTasks";
 
 interface DroppableColumnProps {
   columnId: StatusKey;
@@ -25,7 +25,6 @@ export function DroppableColumn({
   tasks,
   setActiveTask,
   onCardClick,
-  isDragging = false,
   totalCount,
 }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
@@ -65,11 +64,7 @@ export function DroppableColumn({
                   key={`${columnId}-${task.id}`}
                   task={task}
                   setActiveTask={setActiveTask}
-                  onClick={() => {
-                    if (!isDragging) {
-                      onCardClick?.(task.id);
-                    }
-                  }}
+                  onClick={() => onCardClick?.(task.id)}
                 />
               ))
             )}
