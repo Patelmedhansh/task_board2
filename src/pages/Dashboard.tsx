@@ -24,23 +24,11 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
-    null
-  );
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<
-    Record<string, string[]>
-  >({});
+  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-
   const [isDragging, setIsDragging] = useState(false);
-  const statusKeys = ["to-do", "in-progress", "done"] as const;
-  type StatusKey = (typeof statusKeys)[number];
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
   const {
     tasksByStatus,
@@ -49,6 +37,8 @@ export default function Dashboard() {
     setStatusFilter,
     categoryFilter,
     setCategoryFilter,
+    subcategoryFilter,
+    setSubcategoryFilter,
     dateRange,
     setDateRange,
     limit,
@@ -63,7 +53,14 @@ export default function Dashboard() {
     setSearchQuery,
     fetchStatusWiseCounts,
     totalCountByStatus,
+    statusKeyArray,
   } = useTasks();
+
+  type StatusKey = (typeof statusKeyArray)[number];
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const columnMap: Record<StatusKey, string> = {
     "to-do": "To Do",
@@ -228,7 +225,7 @@ export default function Dashboard() {
               onDragEnd={onDragEnd}
             >
               <div className="grid grid-cols-3 gap-4 mt-4">
-                {statusKeys.map((col: StatusKey) => (
+                {statusKeyArray.map((col: StatusKey) => (
                   <DroppableColumn
                     key={col}
                     columnId={col}
@@ -240,7 +237,7 @@ export default function Dashboard() {
                     onCardClick={(id) => {
                       setSelectedTaskId(id);
                       setModalOpen(true);
-                    }}                    
+                    }}
                   />
                 ))}
               </div>

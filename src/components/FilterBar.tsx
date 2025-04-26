@@ -1,25 +1,28 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { DateRange } from "react-date-range";
-import { Dispatch, SetStateAction, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
+// Accept either useState or reducer-dispatch style setters:
+type Setter<T> = (val: T) => void;
+
 interface FilterBarProps {
-  statusFilter?: string | null; 
-  setStatusFilter?: Dispatch<SetStateAction<string | null>>;
+  statusFilter?: string | null;
+  setStatusFilter?: Setter<string | null>;
   categoryFilter: string | null;
-  setCategoryFilter: Dispatch<SetStateAction<string | null>>;
+  setCategoryFilter: Setter<string | null>;
   subcategoryFilter: string | null;
-  setSubcategoryFilter: Dispatch<SetStateAction<string | null>>;
+  setSubcategoryFilter: Setter<string | null>;
   limit: number | null;
-  setLimit: Dispatch<SetStateAction<number | null>>;
+  setLimit: Setter<number | null>;
   dateRange: { from: string | null; to: string | null };
-  setDateRange: Dispatch<SetStateAction<{ from: string | null; to: string | null }>>;
+  setDateRange: Setter<{ from: string | null; to: string | null }>;
   categoryOptions: string[];
   subcategoryMap: Record<string, string[]>;
   searchQuery: string | null;
-  setSearchQuery: Dispatch<SetStateAction<string | null>>;
+  setSearchQuery: Setter<string | null>;
 }
 
 export default function FilterBar({
