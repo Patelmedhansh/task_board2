@@ -40,6 +40,32 @@ export default function Discard() {
     searchQuery,
   ]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-discarded-projects')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+        },
+        (payload) => {
+          const status =
+            (payload.new as any)?.status || (payload.old as any)?.status;
+          if (status === "Discarded") {
+            fetchDiscardedTasks();
+          }
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
+
   const getUser = async () => {
     const {
       data: { user },

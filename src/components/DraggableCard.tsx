@@ -5,7 +5,7 @@ import { Task } from "../types/tasks";
 interface DraggableCardProps {
   task: Task;
   setActiveTask: (task: Task) => void;
-  onClick?: () => void; // <- keep this!
+  onClick?: () => void;
 }
 
 export function DraggableCard({ task, setActiveTask, onClick }: DraggableCardProps) {

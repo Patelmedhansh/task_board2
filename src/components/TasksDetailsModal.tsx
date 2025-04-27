@@ -53,6 +53,63 @@ export default function TaskDetailsModal({
     }
   }, [taskId, isOpen]);
 
+  useEffect(() => {
+    if (!taskId || !isOpen) return;
+  
+    const channel = supabase
+      .channel('realtime-comments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            fetchComments();
+            return;
+          }
+          const affectedTaskId =
+            (payload.new as any)?.task_id || (payload.old as any)?.task_id;
+          if (affectedTaskId === taskId) {
+            fetchComments();
+          }
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, isOpen]);
+
+  useEffect(() => {
+    if (!taskId || !isOpen) return;
+  
+    const channel = supabase
+      .channel('realtime-task-details')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${taskId}`,
+        },
+        () => {
+          fetchTaskDetails();
+        }
+      )
+      .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [taskId, isOpen]);
+  
+  
+
   const fetchTaskDetails = async () => {
     const { data, error } = await supabase.rpc("get_task_details", {
       task_id: taskId,

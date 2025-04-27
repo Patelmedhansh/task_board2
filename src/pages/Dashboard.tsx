@@ -25,7 +25,9 @@ export default function Dashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
+  const [subcategoryMap, setSubcategoryMap] = useState<
+    Record<string, string[]>
+  >({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -221,8 +223,23 @@ export default function Dashboard() {
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
-              onDragStart={() => setIsDragging(true)}
+              onDragStart={(event) => {
+                setIsDragging(true);
+                // Find and set the dragged task for the overlay:
+                const activeId = event.active.id.toString();
+                const col = findColumnOfTask(activeId);
+                if (col) {
+                  const task = tasksByStatus[col].find(
+                    (t) => t.id.toString() === activeId
+                  );
+                  setActiveTask(task || null);
+                }
+              }}
               onDragEnd={onDragEnd}
+              onDragCancel={() => {
+                setIsDragging(false);
+                setActiveTask(null);
+              }}
             >
               <div className="grid grid-cols-3 gap-4 mt-4">
                 {statusKeyArray.map((col: StatusKey) => (

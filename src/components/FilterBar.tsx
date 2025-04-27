@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
-// Accept either useState or reducer-dispatch style setters:
 type Setter<T> = (val: T) => void;
 
 interface FilterBarProps {

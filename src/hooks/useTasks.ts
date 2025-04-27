@@ -1,8 +1,8 @@
 import { useReducer } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
+import { useEffect } from "react";
 
-// ------------------- Types --------------------
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
 
@@ -34,7 +34,6 @@ type Action =
   | { type: "SET_TOTAL_COUNT_BY_STATUS"; payload: Record<StatusKey, number> }
   | { type: "RESET_PAGINATION" };
 
-// ----------------- Reducer --------------------
 const initialState: State = {
   tasksByStatus: {
     "to-do": [],
@@ -97,16 +96,13 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-// --------------- Helper Functions ---------------
 const statusKeyToStatusLabel = (key: StatusKey) =>
   key === "to-do" ? "To Do" : key === "in-progress" ? "In Progress" : "Done";
 
-// ------------------ useTasks --------------------
 export function useTasks() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const pageSize = 10;
 
-  // ---- previously individual setters, now dispatchers ----
   const setTasksByStatus = (val: Record<StatusKey, Task[]>) =>
     dispatch({ type: "SET_TASKS_BY_STATUS", payload: val });
   const setStatusFilter = (val: string | null) =>
@@ -131,7 +127,6 @@ export function useTasks() {
     dispatch({ type: "SET_TOTAL_COUNT_BY_STATUS", payload: val });
   const resetPagination = () => dispatch({ type: "RESET_PAGINATION" });
 
-  // ---------- logic unchanged below this line ----------
   const fetchTasksByStatus = async (
     status: string,
     filters: {
@@ -285,6 +280,30 @@ export function useTasks() {
 
     setTotalCountByStatus(counts);
   };
+
+
+useEffect(() => {
+  const channel = supabase
+    .channel("realtime-projects")
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'projects'
+      },
+      (payload) => {
+        loadMoreTasks(true);
+        fetchStatusWiseCounts(); 
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [loadMoreTasks, fetchStatusWiseCounts]);
+
 
   return {
     tasksByStatus: state.tasksByStatus,
