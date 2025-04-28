@@ -225,7 +225,6 @@ export default function Dashboard() {
               collisionDetection={closestCenter}
               onDragStart={(event) => {
                 setIsDragging(true);
-                // Find and set the dragged task for the overlay:
                 const activeId = event.active.id.toString();
                 const col = findColumnOfTask(activeId);
                 if (col) {

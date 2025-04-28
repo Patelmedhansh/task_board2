@@ -110,7 +110,6 @@ export default function TaskDetailsModal({
     };
   }, [taskId, isOpen]);
   
-  
 
   const fetchTaskDetails = async () => {
     const { data, error } = await supabase.rpc("get_task_details", {
