@@ -57,7 +57,6 @@ export default function FilterBar({
       if (subcategoryFilter !== null) setSubcategoryFilter(null);
     }
   }, [categoryFilter, subcategoryMap, subcategoryFilter]);
-  
 
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -74,18 +73,19 @@ export default function FilterBar({
         />
       </div>
 
-      {typeof statusFilter !== "undefined" && typeof setStatusFilter !== "undefined" && (
-        <select
-          onChange={(e) => setStatusFilter(e.target.value || null)}
-          className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
-          value={statusFilter ?? ""}
-        >
-          <option value="">Status</option>
-          <option value="To Do">To Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Done">Done</option>
-        </select>
-      )}
+      {typeof statusFilter !== "undefined" &&
+        typeof setStatusFilter !== "undefined" && (
+          <select
+            onChange={(e) => setStatusFilter(e.target.value || null)}
+            className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+            value={statusFilter ?? ""}
+          >
+            <option value="">Status</option>
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+        )}
 
       <select
         onChange={(e) => setCategoryFilter(e.target.value || null)}
@@ -115,17 +115,41 @@ export default function FilterBar({
         </select>
       )}
 
-      <div className="relative">
+      <div className="relative flex items-center">
         <button
-          onClick={() => setCalendarOpen(!calendarOpen)}
+          type="button"
+          onClick={() => setCalendarOpen((open) => !open)}
           className="border border-gray-300 px-3 py-2 rounded text-sm w-48 text-left bg-white"
         >
-          {range[0].startDate.toLocaleDateString()} -{" "}
-          {range[0].endDate.toLocaleDateString()}
+          {dateRange.from && dateRange.to
+            ? `${new Date(dateRange.from).toLocaleDateString()} - ${new Date(
+                dateRange.to
+              ).toLocaleDateString()}`
+            : "Date Range"}
         </button>
-
+        {/* Clear Button (shows only if a range is set) */}
+        {dateRange.from && dateRange.to && (
+          <button
+            className="text-gray-400 hover:text-red-500 text-lg px-2 focus:outline-none"
+            title="Clear date filter"
+            type="button"
+            onClick={() => {
+              setDateRange({ from: null, to: null });
+              setRange([
+                {
+                  startDate: new Date(),
+                  endDate: new Date(),
+                  key: "selection",
+                },
+              ]);
+            }}
+          >
+            &times;
+          </button>
+        )}
+        {/* Date Range Picker Dropdown */}
         {calendarOpen && (
-          <div className="absolute mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <div className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
             <DateRange
               ranges={range}
               onChange={(item) => {

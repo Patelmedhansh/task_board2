@@ -65,6 +65,9 @@ export default function Discard() {
     };
   }, []);
   
+  const handleStatusChange = () => {
+    fetchDiscardedTasks();
+  };  
 
   const getUser = async () => {
     const {
@@ -180,6 +183,7 @@ export default function Discard() {
                 taskId={selectedTaskId}
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
+                onStatusChange={handleStatusChange}
               />
             )}
           </div>

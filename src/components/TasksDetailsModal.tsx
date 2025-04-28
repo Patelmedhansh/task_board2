@@ -11,12 +11,14 @@ interface TaskDetailsModalProps {
   taskId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  onStatusChange?: () => void;
 }
 
 export default function TaskDetailsModal({
   taskId,
   isOpen,
   onClose,
+  onStatusChange,
 }: TaskDetailsModalProps) {
   const [task, setTask] = useState<any>(null);
   const [comment, setComment] = useState("");
@@ -126,10 +128,11 @@ export default function TaskDetailsModal({
       .from("projects")
       .update({ status: newStatus })
       .eq("id", taskId);
-
+  
     if (!error) {
       setTask((prev: any) => ({ ...prev, status: newStatus }));
       toast.success("Status updated!");
+      if (onStatusChange) onStatusChange();
     } else {
       toast.error("Failed to update status");
     }
