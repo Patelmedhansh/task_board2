@@ -66,7 +66,9 @@ export default function TaskDetailsModal({
           table: 'comments',
         },
         (payload) => {
-          if (payload.eventType === "DELETE") {
+          if (payload.eventType === "INSERT" && payload.new?.task_id == taskId ||
+            payload.eventType === "UPDATE" && payload.new?.task_id == taskId ||
+            payload.eventType === "DELETE") {
             fetchComments();
             return;
           }

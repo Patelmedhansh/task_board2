@@ -54,9 +54,10 @@ export default function FilterBar({
       categoryFilter &&
       !subcategoryMap[categoryFilter]?.includes(subcategoryFilter || "")
     ) {
-      setSubcategoryFilter(null);
+      if (subcategoryFilter !== null) setSubcategoryFilter(null);
     }
-  }, [categoryFilter, subcategoryMap, subcategoryFilter, setSubcategoryFilter]);
+  }, [categoryFilter, subcategoryMap, subcategoryFilter]);
+  
 
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
