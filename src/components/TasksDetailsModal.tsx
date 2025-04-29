@@ -33,6 +33,17 @@ export default function TaskDetailsModal({
   // const [replyContent, setReplyContent] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
 
   const handleAskAI = async () => {
     setAiLoading(true);
@@ -57,20 +68,24 @@ export default function TaskDetailsModal({
 
   useEffect(() => {
     if (!taskId || !isOpen) return;
-  
+
     const channel = supabase
-      .channel('realtime-comments')
+      .channel("realtime-comments")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'comments',
+          event: "*",
+          schema: "public",
+          table: "comments",
         },
         (payload) => {
-          if (payload.eventType === "INSERT" && payload.new?.task_id == taskId ||
-            payload.eventType === "UPDATE" && payload.new?.task_id == taskId ||
-            payload.eventType === "DELETE") {
+          if (
+            (payload.eventType === "INSERT" &&
+              payload.new?.task_id == taskId) ||
+            (payload.eventType === "UPDATE" &&
+              payload.new?.task_id == taskId) ||
+            payload.eventType === "DELETE"
+          ) {
             fetchComments();
             return;
           }
@@ -82,7 +97,7 @@ export default function TaskDetailsModal({
         }
       )
       .subscribe();
-  
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -90,15 +105,15 @@ export default function TaskDetailsModal({
 
   useEffect(() => {
     if (!taskId || !isOpen) return;
-  
+
     const channel = supabase
-      .channel('realtime-task-details')
+      .channel("realtime-task-details")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'projects',
+          event: "*",
+          schema: "public",
+          table: "projects",
           filter: `id=eq.${taskId}`,
         },
         () => {
@@ -106,12 +121,11 @@ export default function TaskDetailsModal({
         }
       )
       .subscribe();
-  
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [taskId, isOpen]);
-  
 
   const fetchTaskDetails = async () => {
     const { data, error } = await supabase.rpc("get_task_details", {
@@ -128,7 +142,7 @@ export default function TaskDetailsModal({
       .from("projects")
       .update({ status: newStatus })
       .eq("id", taskId);
-  
+
     if (!error) {
       setTask((prev: any) => ({ ...prev, status: newStatus }));
       toast.success("Status updated!");
@@ -141,7 +155,9 @@ export default function TaskDetailsModal({
   const fetchComments = async () => {
     const { data, error } = await supabase
       .from("comments")
-      .select("id, content, created_at, user_email, parent_id")
+      .select(
+        "id, content, created_at, updated_at, user_id, user_email, parent_id"
+      )
       .eq("task_id", taskId)
       .order("created_at", { ascending: true });
 
@@ -158,6 +174,7 @@ export default function TaskDetailsModal({
       {
         task_id: taskId,
         content: comment,
+        user_id: user?.id,
         user_email: user?.email || "Anonymous",
         parent_id: null,
       },
@@ -192,7 +209,7 @@ export default function TaskDetailsModal({
   const handleSaveEdit = async (id: string) => {
     const { error } = await supabase
       .from("comments")
-      .update({ content: editingContent })
+      .update({ content: editingContent, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (!error) {
       toast.success("Comment updated!");
@@ -271,28 +288,31 @@ export default function TaskDetailsModal({
                 {c.content}
               </p>
               <span className="text-xs text-gray-400">
-                {new Date(c.created_at).toLocaleString()}
+                {new Date(c.updated_at || c.created_at).toLocaleString()}{" "}
+                {c.updated_at && " (edited)"}{" "}
               </span>
-              <div className="mt-1 flex gap-2 text-xs">
-                {/* <button
+              {currentUserId === c.user_id && (
+                <div className="mt-1 flex gap-2 text-xs">
+                  {/* <button
                   className="hover:underline"
                   onClick={() => handleStartReply(c.id)}
                 >
                   Reply
                 </button> */}
-                <button
-                  className="hover:underline"
-                  onClick={() => handleStartEdit(c)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="hover:underline"
-                  onClick={() => handleDeleteComment(c.id)}
-                >
-                  Delete
-                </button>
-              </div>
+                  <button
+                    className="hover:underline"
+                    onClick={() => handleStartEdit(c)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="hover:underline"
+                    onClick={() => handleDeleteComment(c.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -418,37 +438,37 @@ export default function TaskDetailsModal({
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Amount Raw Value</span>
                       <span className="font-normal">
-                        {task.amount_rawValue}
+                        {task.amount_rawValue ?? "-"}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Amount Display Value</span>
                       <span className="font-normal">
-                        {task.amount_displayValue}
+                        {task.amount_displayValue ?? "-"}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Hourly Budget Type</span>
                       <span className="font-normal">
-                        {task.hourlyBudgetType}
+                        {task.hourlyBudgetType ?? "-"}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Hourly Budget Min Value</span>
                       <span className="font-normal">
-                        {task.hourlyBudgetMin_rawValue}
+                        {task.hourlyBudgetMin_rawValue ?? "-"}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Hourly Budget Max Value</span>
                       <span className="font-normal">
-                        {task.hourlyBudgetMax_rawValue}
+                        {task.hourlyBudgetMax_rawValue ?? "-"}
                       </span>
                     </div>
                     <div className="flex justify-between gap-x-12">
                       <span className="mr-8">Total Applicant</span>
                       <span className="font-normal">
-                        {task.totalApplicants}
+                        {task.totalApplicants ?? "-"}
                       </span>
                     </div>
                   </div>

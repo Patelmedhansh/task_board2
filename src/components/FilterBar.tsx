@@ -40,6 +40,7 @@ export default function FilterBar({
   searchQuery,
   setSearchQuery,
 }: FilterBarProps) {
+  const [searchInput, setSearchInput] = useState(searchQuery ?? "");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [range, setRange] = useState<any[]>([
     {
@@ -58,6 +59,16 @@ export default function FilterBar({
     }
   }, [categoryFilter, subcategoryMap, subcategoryFilter]);
 
+  
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearchQuery(searchInput.trim() || null);
+    }, 500);
+  
+    return () => clearTimeout(delay);
+  }, [searchInput, setSearchQuery]);
+  
+
   return (
     <div className="flex flex-wrap items-center gap-4 mb-6">
       <div className="relative">
@@ -67,8 +78,8 @@ export default function FilterBar({
         <input
           type="text"
           placeholder="Search"
-          value={searchQuery ?? ""}
-          onChange={(e) => setSearchQuery(e.target.value || null)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="border border-gray-300 pl-10 pr-4 py-2 rounded text-sm w-48 bg-white"
         />
       </div>
@@ -127,10 +138,9 @@ export default function FilterBar({
               ).toLocaleDateString()}`
             : "Date Range"}
         </button>
-        {/* Clear Button (shows only if a range is set) */}
         {dateRange.from && dateRange.to && (
           <button
-            className="text-gray-400 hover:text-red-500 text-lg px-2 focus:outline-none"
+            className="text-gray-400 hover:text-red-500 text-lg px-1 focus:outline-none"
             title="Clear date filter"
             type="button"
             onClick={() => {
@@ -147,7 +157,6 @@ export default function FilterBar({
             &times;
           </button>
         )}
-        {/* Date Range Picker Dropdown */}
         {calendarOpen && (
           <div className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
             <DateRange

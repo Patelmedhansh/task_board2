@@ -96,6 +96,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
+
 const statusKeyToStatusLabel = (key: StatusKey) =>
   key === "to-do" ? "To Do" : key === "in-progress" ? "In Progress" : "Done";
 
@@ -154,6 +155,7 @@ export function useTasks() {
       offset_count: offset,
       search_query: filters.searchQuery,
     });
+    console.log("length:", data.length, status);
 
     return !error && data ? (data as Task[]) : [];
   };
@@ -168,6 +170,9 @@ export function useTasks() {
 
     let tasksFetched = false;
 
+    const currentPage = reset ? 0 : state.page;
+    const nextPage = reset ? 1 : state.page + 1;
+
     for (const status of statuses) {
       const key = status.toLowerCase().replace(" ", "-") as StatusKey;
 
@@ -179,7 +184,7 @@ export function useTasks() {
         dateRange: isSelected ? state.dateRange : { from: null, to: null },
         searchQuery: isSelected ? state.searchQuery : null,
         limit: state.limit,
-        offset: reset ? 0 : state.page * (state.limit ?? pageSize),
+        offset: currentPage * (state.limit ?? pageSize),
       };
 
       const fetchedTasks = await fetchTasksByStatus(status, filtersToApply, reset);
@@ -192,8 +197,11 @@ export function useTasks() {
 
     setTasksByStatus(newTasksByStatus);
 
-    if (!tasksFetched) setHasMore(false);
-    setPage(reset ? 1 : state.page + 1);
+    if (!tasksFetched) {
+      setHasMore(false);
+    } else {
+      setPage(nextPage);
+    }
     setLoading(false);
   };
 
@@ -280,7 +288,6 @@ export function useTasks() {
 
     setTotalCountByStatus(counts);
   };
-
 
 useEffect(() => {
   const channel = supabase
