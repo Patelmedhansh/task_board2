@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import FilterBar from "../components/FilterBar";
 import { Task } from "../types/tasks";
 import TaskDetailsModal from "../components/TasksDetailsModal";
+import LogoutConfirmDialog from "../components/Logout";
 
 export default function Discard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -27,28 +28,23 @@ export default function Discard() {
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     fetchDiscardedTasks();
     getUser();
     fetchCategoryData();
-  }, [
-    categoryFilter,
-    subcategoryFilter,
-    dateRange,
-    limit,
-    searchQuery,
-  ]);
+  }, [categoryFilter, subcategoryFilter, dateRange, limit, searchQuery]);
 
   useEffect(() => {
     const channel = supabase
-      .channel('realtime-discarded-projects')
+      .channel("realtime-discarded-projects")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'projects',
+          event: "*",
+          schema: "public",
+          table: "projects",
         },
         (payload) => {
           const status =
@@ -59,15 +55,15 @@ export default function Discard() {
         }
       )
       .subscribe();
-  
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
-  
+
   const handleStatusChange = () => {
     fetchDiscardedTasks();
-  };  
+  };
 
   const getUser = async () => {
     const {
@@ -115,7 +111,8 @@ export default function Discard() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => setShowLogoutConfirm(true);
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
@@ -174,7 +171,9 @@ export default function Discard() {
                   }}
                 >
                   <h2 className="font-semibold">{task.title}</h2>
-                  <p className="text-sm text-gray-600 line-clamp-1">{task.description}</p>
+                  <p className="text-sm text-gray-600 line-clamp-1">
+                    {task.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -189,6 +188,10 @@ export default function Discard() {
           </div>
         </div>
       </div>
+      <LogoutConfirmDialog
+      isOpen={showLogoutConfirm}
+      onCancel={() => setShowLogoutConfirm(false)}
+      onConfirm={confirmLogout}/>
     </div>
   );
 }

@@ -289,6 +289,20 @@ export function useTasks() {
     setTotalCountByStatus(counts);
   };
 
+  // useEffect(() => {
+  //   resetPagination();
+  //   loadMoreTasks(true);
+  //   fetchStatusWiseCounts();
+  // }, [
+  //   state.statusFilter,
+  //   state.categoryFilter,
+  //   state.subcategoryFilter,
+  //   state.dateRange.from,
+  //   state.dateRange.to,
+  //   state.searchQuery,
+  //   state.limit,
+  // ]);
+
 useEffect(() => {
   const channel = supabase
     .channel("realtime-projects")

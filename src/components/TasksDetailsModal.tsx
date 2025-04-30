@@ -34,6 +34,10 @@ export default function TaskDetailsModal({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [commentIdToDelete, setCommentIdToDelete] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -63,6 +67,7 @@ export default function TaskDetailsModal({
     if (taskId && isOpen) {
       fetchTaskDetails();
       fetchComments();
+      setAiAnswer(null);
     }
   }, [taskId, isOpen]);
 
@@ -159,7 +164,7 @@ export default function TaskDetailsModal({
         "id, content, created_at, updated_at, user_id, user_email, parent_id"
       )
       .eq("task_id", taskId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (!error && data) setComments(data);
   };
@@ -188,6 +193,24 @@ export default function TaskDetailsModal({
       toast.error("Failed to add comment");
     }
     setLoading(false);
+  };
+
+  const confirmDelete = (id: string) => {
+    setCommentIdToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const cancelDelete = () => {
+    setCommentIdToDelete(null);
+    setShowDeleteModal(false);
+  };
+
+  const proceedToDelete = () => {
+    if (commentIdToDelete) {
+      handleDeleteComment(commentIdToDelete);
+      setShowDeleteModal(false);
+      setCommentIdToDelete(null);
+    }
   };
 
   const handleDeleteComment = async (id: string) => {
@@ -288,8 +311,8 @@ export default function TaskDetailsModal({
                 {c.content}
               </p>
               <span className="text-xs text-gray-400">
-                {new Date(c.updated_at || c.created_at).toLocaleString()}{" "}
-                {c.updated_at && " (edited)"}{" "}
+                {new Date(c.created_at).toLocaleString()}
+                {c.updated_at && " (edited)"}
               </span>
               {currentUserId === c.user_id && (
                 <div className="mt-1 flex gap-2 text-xs">
@@ -307,7 +330,7 @@ export default function TaskDetailsModal({
                   </button>
                   <button
                     className="hover:underline"
-                    onClick={() => handleDeleteComment(c.id)}
+                    onClick={() => confirmDelete(c.id)}
                   >
                     Delete
                   </button>
@@ -365,56 +388,58 @@ export default function TaskDetailsModal({
             </div>
             <div className="grid grid-cols-3 gap-6 items-start">
               <div className="col-span-2">
-                <h3 className="font-semibold mb-1">Description</h3>
-                <div className="text-sm text-gray-700 whitespace-pre-line mb-4 max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
-                  {task.description}
-                </div>
-                <button
-                  onClick={handleAskAI}
-                  disabled={aiLoading}
-                  className="mt-4 mb-1 flex items-center gap-2 font-semibold border border-orange-600 rounded text-orange-600 pl-3 pr-3 pt-1 pb-1 hover:text-white hover:bg-orange-600"
-                >
-                  <FontAwesomeIcon icon={faEye} />{" "}
-                  {aiLoading ? "Generating..." : "Write with AI"}
-                </button>
-                {aiAnswer && (
-                  <div className="relative rounded border border-gray-300 p-3 text-sm leading-6 mb-4">
-                    <button
-                      onClick={handleCloseSuggestion}
-                      className="absolute top-2 right-2 text-gray-400 hover:text-black text-sm"
-                      aria-label="Close suggestion"
-                    >
-                      &times;
-                    </button>
-                    <h4 className="mb-2 font-semibold">AI suggestion</h4>
-                    <p className="text-gray-700 text-sm whitespace-pre-line">
-                      {aiAnswer}
-                    </p>
+                <div className="max-h-[75vh] overflow-y-auto pr-2">
+                  <h3 className="font-semibold mb-1">Description</h3>
+                  <div className="text-sm text-gray-700 whitespace-pre-line mb-4 overflow-y-auto rounded p-2">
+                    {task.description}
                   </div>
-                )}
-                <h4 className="font-semibold mt-4 mb-2">Comments</h4>
-                <textarea
-                  className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
-                  placeholder="Add Comment..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                />
-                <div className="flex gap-2">
                   <button
-                    className="bg-orange-600 text-white px-4 py-1 rounded text-sm"
-                    onClick={handleAddComment}
-                    disabled={loading || !comment.trim()}
+                    onClick={handleAskAI}
+                    disabled={aiLoading}
+                    className="mt-4 mb-1 flex items-center gap-2 font-semibold border border-orange-600 rounded text-orange-600 pl-3 pr-3 pt-1 pb-1 hover:text-white hover:bg-orange-600"
                   >
-                    Save
+                    <FontAwesomeIcon icon={faEye} />{" "}
+                    {aiLoading ? "Generating..." : "Write with AI"}
                   </button>
-                  <button
-                    className="text-sm text-gray-600 hover:text-black"
-                    onClick={() => setComment("")}
-                  >
-                    Cancel
-                  </button>
+                  {aiAnswer && (
+                    <div className="relative rounded border border-gray-300 p-3 text-sm leading-6 mb-4">
+                      <button
+                        onClick={handleCloseSuggestion}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-black text-sm"
+                        aria-label="Close suggestion"
+                      >
+                        &times;
+                      </button>
+                      <h4 className="mb-2 font-semibold">AI suggestion</h4>
+                      <p className="text-gray-700 text-sm whitespace-pre-line">
+                        {aiAnswer}
+                      </p>
+                    </div>
+                  )}
+                  <h4 className="font-semibold mt-4 mb-2">Comments</h4>
+                  <textarea
+                    className="w-full border border-gray-300 rounded p-2 text-sm mb-2"
+                    placeholder="Add Comment..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      className="bg-orange-600 text-white px-4 py-1 rounded text-sm"
+                      onClick={handleAddComment}
+                      disabled={loading || !comment.trim()}
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="text-sm text-gray-600 hover:text-black"
+                      onClick={() => setComment("")}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="mt-4 space-y-3">{renderComments()}</div>
                 </div>
-                <div className="mt-4 space-y-3">{renderComments()}</div>
               </div>
 
               <div className="col-span-1">
@@ -475,6 +500,33 @@ export default function TaskDetailsModal({
                 </div>
               </div>
             </div>
+            {showDeleteModal && (
+              <div className="fixed inset-0 backdrop-blur-sm z-5 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.1)] border-gray-500 p-6 w-full max-w-sm">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Confirm Deletion
+                  </h3>
+                  <p className="text-sm text-gray-700 mb-6">
+                    Are you sure you want to delete this comment? This action
+                    cannot be undone.
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-4 py-2 text-sm bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                      onClick={cancelDelete}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      onClick={proceedToDelete}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </DialogPanel>
         </div>
       </Dialog>

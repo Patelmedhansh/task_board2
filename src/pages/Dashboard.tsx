@@ -17,6 +17,7 @@ import { DraggableCard } from "../components/DraggableCard";
 import { useTasks } from "../hooks/useTasks";
 import { Task } from "../types/tasks";
 import TaskDetailsModal from "../components/TasksDetailsModal";
+import LogoutConfirmDialog from "../components/Logout";
 
 export default function Dashboard() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const {
     tasksByStatus,
@@ -172,7 +174,8 @@ export default function Dashboard() {
     if (user) setUserEmail(user?.email ?? "");
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => setShowLogoutConfirm(true);
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
@@ -282,6 +285,11 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <LogoutConfirmDialog
+        isOpen={showLogoutConfirm}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 }

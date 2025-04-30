@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { DateRange } from "react-date-range";
 import { useState, useEffect } from "react";
+import { useRef } from "react";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
@@ -40,6 +41,7 @@ export default function FilterBar({
   searchQuery,
   setSearchQuery,
 }: FilterBarProps) {
+  const calendarRef = useRef<HTMLDivElement>(null);
   const [searchInput, setSearchInput] = useState(searchQuery ?? "");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [range, setRange] = useState<any[]>([
@@ -49,6 +51,19 @@ export default function FilterBar({
       key: "selection",
     },
   ]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setCalendarOpen(false); // 👈 close the calendar
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -158,7 +173,7 @@ export default function FilterBar({
           </button>
         )}
         {calendarOpen && (
-          <div className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <div ref={calendarRef} className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
             <DateRange
               ranges={range}
               onChange={(item) => {

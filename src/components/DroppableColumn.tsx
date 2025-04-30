@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -27,48 +28,67 @@ export function DroppableColumn({
   onCardClick,
   totalCount,
 }: DroppableColumnProps) {
+  const columnContentRef = useRef<HTMLDivElement | null>(null);
+  const [scrolled, setScrolled] = useState(false);
   const { setNodeRef } = useDroppable({ id: columnId });
 
-  return (
-    <div
-      ref={setNodeRef}
-      className="bg-white rounded-lg shadow p-4 min-h-[300px] flex flex-col justify-between"
-    >
-      <div>
-        <div className="font-semibold mb-2 flex items-center">
-          <span
-            className={`w-3 h-3 rounded-full mr-2 ${
-              columnId === "to-do"
-                ? "bg-yellow-500"
-                : columnId === "in-progress"
-                ? "bg-blue-500"
-                : "bg-green-500"
-            }`}
-          />
-          {title} ({tasks.length} of {totalCount})
-        </div>
+  useEffect(() => {
+    const el = columnContentRef.current;
+    if (!el) return;
 
+    const handleScroll = () => {
+      setScrolled(el.scrollTop > 0);
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <div className="bg-white rounded-lg shadow p-4 min-h-[300px] flex flex-col">
+      <div
+        className={`sticky top-0 z-10 bg-white p-2 font-semibold flex items-center ${
+          scrolled ? "shadow-sm border-b" : ""
+        }`}
+      >
+        <span
+          className={`w-3 h-3 rounded-full mr-2 ${
+            columnId === "to-do"
+              ? "bg-yellow-500"
+              : columnId === "in-progress"
+              ? "bg-blue-500"
+              : "bg-green-500"
+          }`}
+        />
+        {title} ({tasks.length} of {totalCount})
+      </div>
+
+      <div
+        ref={(el) => {
+          columnContentRef.current = el;
+          setNodeRef(el);
+        }}
+        className="mt-2 flex-1 overflow-y-auto space-y-3"
+      >
         <SortableContext
           items={tasks.map((task) => task.id.toString())}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-3">
-            {tasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                <img src={NoTask} alt="No Task" className="h-32 w-32 mb-2" />
-                <span>No Task</span>
-              </div>
-            ) : (
-              tasks.map((task) => (
-                <DraggableCard
-                  key={`${columnId}-${task.id}`}
-                  task={task}
-                  setActiveTask={setActiveTask}
-                  onClick={() => onCardClick?.(task.id)}
-                />
-              ))
-            )}
-          </div>
+          {tasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+              <img src={NoTask} alt="No Task" className="h-32 w-32 mb-2" />
+              <span>No Task</span>
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <DraggableCard
+                key={`${columnId}-${task.id}`}
+                task={task}
+                setActiveTask={setActiveTask}
+                onClick={() => onCardClick?.(task.id)}
+              />
+            ))
+          )}
         </SortableContext>
       </div>
     </div>
