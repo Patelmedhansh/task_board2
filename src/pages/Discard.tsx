@@ -6,9 +6,9 @@ import FilterBar from "../components/FilterBar";
 import { Task } from "../types/tasks";
 import TaskDetailsModal from "../components/TasksDetailsModal";
 import LogoutConfirmDialog from "../components/Logout";
+import { useLoader } from "../context/LoaderContext";
 
 export default function Discard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [discardedTasks, setDiscardedTasks] = useState<Task[]>([]);
@@ -29,6 +29,18 @@ export default function Discard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { setLoading } = useLoader();
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.innerWidth >= 768
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     fetchDiscardedTasks();
@@ -73,6 +85,8 @@ export default function Discard() {
   };
 
   const fetchCategoryData = async () => {
+    setLoading(true);
+
     const { data, error } = await supabase
       .from("projects")
       .select("category, subcategory");
@@ -93,9 +107,13 @@ export default function Discard() {
       setCategoryOptions(Array.from(categories));
       setSubcategoryMap(map);
     }
+
+    setLoading(false);
   };
 
   const fetchDiscardedTasks = async () => {
+    setLoading(true);
+
     let query = supabase.from("projects").select("*").eq("status", "Discarded");
 
     if (categoryFilter) query = query.eq("category", categoryFilter);
@@ -106,9 +124,12 @@ export default function Discard() {
     if (limit) query = query.limit(limit);
 
     const { data, error } = await query;
+
     if (!error && data) {
       setDiscardedTasks(data);
     }
+
+    setLoading(false);
   };
 
   const handleLogout = () => setShowLogoutConfirm(true);
@@ -118,7 +139,7 @@ export default function Discard() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen">
       <Sidebar sidebarOpen={sidebarOpen} />
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
@@ -134,7 +155,7 @@ export default function Discard() {
           handleLogout={handleLogout}
         />
 
-        <div className="flex-1 p-6 bg-gray-100 mt-20">
+        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-20 min-h-0">
           <h1 className="font-bold text-2xl mb-6">Discard</h1>
 
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
@@ -154,13 +175,13 @@ export default function Discard() {
             />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 mt-4">
+          <div className="bg-white rounded-lg shadow p-4 mt-4 flex flex-col flex-1 min-h-0">
             <div className="font-semibold mb-4 flex items-center text-red-500">
               <span className="w-3 h-3 bg-red-500 rounded-full mr-2" />
               Discard
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto pr-2 flex-1 min-h-0">
               {discardedTasks.map((task) => (
                 <div
                   key={task.id}
@@ -176,22 +197,23 @@ export default function Discard() {
                   </p>
                 </div>
               ))}
+              {selectedTaskId && (
+                <TaskDetailsModal
+                  taskId={selectedTaskId}
+                  isOpen={modalOpen}
+                  onClose={() => setModalOpen(false)}
+                  onStatusChange={handleStatusChange}
+                />
+              )}
             </div>
-            {selectedTaskId && (
-              <TaskDetailsModal
-                taskId={selectedTaskId}
-                isOpen={modalOpen}
-                onClose={() => setModalOpen(false)}
-                onStatusChange={handleStatusChange}
-              />
-            )}
           </div>
         </div>
       </div>
       <LogoutConfirmDialog
-      isOpen={showLogoutConfirm}
-      onCancel={() => setShowLogoutConfirm(false)}
-      onConfirm={confirmLogout}/>
+        isOpen={showLogoutConfirm}
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 }

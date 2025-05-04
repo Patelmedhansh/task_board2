@@ -6,12 +6,14 @@ import { Comment } from "../types/comments";
 import { askAIForTask } from "../services/aiSuggestions";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
+import { useLoader } from "../context/LoaderContext";
+import { Task } from "../types/tasks";
 
 interface TaskDetailsModalProps {
   taskId: string | null;
   isOpen: boolean;
   onClose: () => void;
-  onStatusChange?: () => void;
+  onStatusChange?: (updatedTask: Task) => void;
 }
 
 export default function TaskDetailsModal({
@@ -23,7 +25,7 @@ export default function TaskDetailsModal({
   const [task, setTask] = useState<any>(null);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingComment, setLoadingComment] = useState(false);
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState<string>("");
@@ -38,6 +40,8 @@ export default function TaskDetailsModal({
   const [commentIdToDelete, setCommentIdToDelete] = useState<string | null>(
     null
   );
+  const { setLoading } = useLoader();
+
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -133,29 +137,37 @@ export default function TaskDetailsModal({
   }, [taskId, isOpen]);
 
   const fetchTaskDetails = async () => {
+    setLoading(true);
     const { data, error } = await supabase.rpc("get_task_details", {
       task_id: taskId,
     });
     if (!error && data && data.length > 0) setTask(data[0]);
+    setLoading(false);
   };
+  
 
   const handleStatusChange = async (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const newStatus = e.target.value;
+  
+    setLoading(true);
     const { error } = await supabase
       .from("projects")
       .update({ status: newStatus })
       .eq("id", taskId);
-
+    setLoading(false);
+  
     if (!error) {
-      setTask((prev: any) => ({ ...prev, status: newStatus }));
+      const updatedTask = { ...task, status: newStatus };
+      setTask(updatedTask);
       toast.success("Status updated!");
-      if (onStatusChange) onStatusChange();
+      if (onStatusChange) onStatusChange(updatedTask);
     } else {
       toast.error("Failed to update status");
     }
   };
+  
 
   const fetchComments = async () => {
     const { data, error } = await supabase
@@ -170,7 +182,7 @@ export default function TaskDetailsModal({
   };
 
   const handleAddComment = async () => {
-    setLoading(true);
+    setLoadingComment(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -192,7 +204,7 @@ export default function TaskDetailsModal({
     } else {
       toast.error("Failed to add comment");
     }
-    setLoading(false);
+    setLoadingComment(false);
   };
 
   const confirmDelete = (id: string) => {
@@ -214,7 +226,10 @@ export default function TaskDetailsModal({
   };
 
   const handleDeleteComment = async (id: string) => {
+    setLoading(true); 
     const { error } = await supabase.from("comments").delete().eq("id", id);
+    setLoading(false);
+  
     if (!error) {
       toast.success("Comment deleted");
       fetchComments();
@@ -222,6 +237,7 @@ export default function TaskDetailsModal({
       toast.error("Failed to delete comment");
     }
   };
+  
 
   const handleStartEdit = (comment: Comment) => {
     setEditingCommentId(comment.id);
@@ -376,7 +392,7 @@ export default function TaskDetailsModal({
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <div className="fixed inset-0 backdrop-blur-sm" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] p-6 w-full max-w-5xl overflow-y-auto max-h-[90vh]">
+        <DialogPanel className="bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] p-4 sm:p-6 w-full max-w-5xl h-full sm:h-auto overflow-y-auto">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-xl font-bold">{task.title}</h2>
               <button
@@ -386,7 +402,7 @@ export default function TaskDetailsModal({
                 &times;
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="col-span-2">
                 <div className="max-h-[75vh] overflow-y-auto pr-2">
                   <h3 className="font-semibold mb-1">Description</h3>
@@ -427,7 +443,7 @@ export default function TaskDetailsModal({
                     <button
                       className="bg-orange-600 text-white px-4 py-1 rounded text-sm"
                       onClick={handleAddComment}
-                      disabled={loading || !comment.trim()}
+                      disabled={loadingComment || !comment.trim()}
                     >
                       Save
                     </button>
@@ -442,9 +458,9 @@ export default function TaskDetailsModal({
                 </div>
               </div>
 
-              <div className="col-span-1">
+              <div className="col-span-1 lg:col-span-1 w-full">
                 <h3 className="font-semibold mb-4">Details</h3>
-                <div className="bg-white rounded-lg border border-gray-200 px-6 py-5 w-full max-w-xs ml-auto">
+                <div className="bg-white rounded-lg border border-gray-200 px-4 sm:px-6 py-5 w-full">
                   <div className="mb-4 flex items-center justify-between">
                     <span className="font-medium text-base">Status</span>
                     <select

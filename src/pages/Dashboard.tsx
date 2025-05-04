@@ -18,10 +18,10 @@ import { useTasks } from "../hooks/useTasks";
 import { Task } from "../types/tasks";
 import TaskDetailsModal from "../components/TasksDetailsModal";
 import LogoutConfirmDialog from "../components/Logout";
+import { useLoader } from "../context/LoaderContext";
 
 export default function Dashboard() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userEmail, setUserEmail] = useState<string>("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -60,6 +60,19 @@ export default function Dashboard() {
     statusKeyArray,
   } = useTasks();
 
+  const { setLoading } = useLoader();
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.innerWidth >= 768
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   type StatusKey = (typeof statusKeyArray)[number];
 
   const sensors = useSensors(
@@ -73,10 +86,16 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    resetPagination();
-    loadMoreTasks(true);
-    fetchStatusWiseCounts();
-    getUser();
+    const init = async () => {
+      setLoading(true);
+      resetPagination();
+      await loadMoreTasks(true);
+      await fetchStatusWiseCounts();
+      await getUser();
+      setLoading(false);
+    };
+
+    init();
   }, [
     statusFilter,
     categoryFilter,
@@ -105,6 +124,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchCategoryData = async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from("projects")
         .select("category, subcategory");
@@ -125,6 +145,8 @@ export default function Dashboard() {
         setCategoryOptions(Array.from(categories));
         setSubcategoryMap(map);
       }
+
+      setLoading(false);
     };
 
     fetchCategoryData();
@@ -161,10 +183,12 @@ export default function Dashboard() {
       if (sourceIndex < destIndex) destIndex--;
     }
 
+    setLoading(true); // ✅ Start global loading
     await moveTask(activeId, sourceCol, destCol, destIndex);
-    setActiveTask(null);
+    await fetchStatusWiseCounts(); // Optional: keep after move
+    setLoading(false); // ✅ End global loading
 
-    fetchStatusWiseCounts();
+    setActiveTask(null);
   };
 
   const getUser = async () => {
@@ -181,7 +205,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen">
       <Sidebar sidebarOpen={sidebarOpen} />
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
@@ -197,7 +221,7 @@ export default function Dashboard() {
           handleLogout={handleLogout}
         />
 
-        <div className="flex-1 p-6 bg-gray-100 mt-20">
+        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-20 min-h-0">
           <h1 className="font-bold text-2xl mb-2">Dashboard</h1>
 
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
@@ -219,10 +243,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div
-            className="overflow-y-auto max-h-[calc(100vh-12rem)]"
-            ref={scrollRef}
-          >
+          <div className="flex-1 overflow-y-auto min-h-0" ref={scrollRef}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -243,7 +264,7 @@ export default function Dashboard() {
                 setActiveTask(null);
               }}
             >
-              <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="flex md:grid md:grid-cols-3 gap-4 mt-4 overflow-x-auto min-w-full">
                 {statusKeyArray.map((col: StatusKey) => (
                   <DroppableColumn
                     key={col}
@@ -280,11 +301,31 @@ export default function Dashboard() {
                 taskId={selectedTaskId}
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
+                onStatusChange={(updatedTask) => {
+                  if (!updatedTask) return;
+
+                  const updated = { ...tasksByStatus };
+                  for (const key of statusKeyArray) {
+                    updated[key] = updated[key].filter(
+                      (t) => t.id !== updatedTask.id
+                    );
+                  }
+
+                  const newStatus = updatedTask.status
+                    .toLowerCase()
+                    .replace(" ", "-");
+                  if (statusKeyArray.includes(newStatus as any)) {
+                    updated[newStatus as StatusKey].unshift(updatedTask);
+                  }
+
+                  setTasksByStatus(updated);
+                }}
               />
             )}
           </div>
         </div>
       </div>
+
       <LogoutConfirmDialog
         isOpen={showLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}

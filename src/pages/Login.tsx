@@ -32,26 +32,26 @@ export default function Login() {
   };
 
   return (
-    <div className="flex h-screen w-full">
-      <div className="w-1/2 bg-gray-50 flex items-center justify-center">
+    <div className="flex flex-col md:flex-row h-screen w-full">
+      <div className="w-full md:w-1/2 bg-gray-50 flex items-center justify-center p-4">
         <img
           src={Frame}
           alt="Login Illustration"
-          className="max-w-3xl w-full"
+          className="max-w-xs md:max-w-3xl w-full"
         />
       </div>
 
-      <div className="w-1/2 flex flex-col items-center justify-center bg-white">
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-white px-4">
         <div className="w-full max-w-lg mb-4">
-          <img src={Logo} alt="Novumlogic Logo" className="" />
+          <img src={Logo} alt="Novumlogic Logo" className="max-w-[180px]" />
         </div>
-
+  
         <form
           onSubmit={handleLogin}
-          className="bg-white p-10 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.1)] w-full max-w-lg"
+          className="bg-white p-6 md:p-10 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.1)] w-full max-w-lg"
         >
           <h2 className="text-2xl font-semibold mb-4">Login</h2>
-
+  
           <input
             type="email"
             placeholder="Email"
@@ -74,14 +74,14 @@ export default function Login() {
               <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
             </span>
           </div>
-
+  
           <div className="flex items-center justify-between text-sm mb-4">
             <label className="flex items-center">
               <input type="checkbox" className="mr-2" />
               Remember Me
             </label>
           </div>
-
+  
           <button
             type="submit"
             className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 w-full rounded"
@@ -92,4 +92,5 @@ export default function Login() {
       </div>
     </div>
   );
+  
 }
