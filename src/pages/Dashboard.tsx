@@ -183,10 +183,10 @@ export default function Dashboard() {
       if (sourceIndex < destIndex) destIndex--;
     }
 
-    setLoading(true); // ✅ Start global loading
+    setLoading(true);
     await moveTask(activeId, sourceCol, destCol, destIndex);
-    await fetchStatusWiseCounts(); // Optional: keep after move
-    setLoading(false); // ✅ End global loading
+    await fetchStatusWiseCounts();
+    setLoading(false);
 
     setActiveTask(null);
   };
@@ -205,7 +205,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div
+      className={`flex h-screen ${
+        sidebarOpen ? "overflow-hidden" : "overflow-x-auto"
+      }`}
+    >
       <Sidebar sidebarOpen={sidebarOpen} />
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${
@@ -301,7 +305,7 @@ export default function Dashboard() {
                 taskId={selectedTaskId}
                 isOpen={modalOpen}
                 onClose={() => setModalOpen(false)}
-                onStatusChange={(updatedTask) => {
+                onStatusChange={async (updatedTask) => {
                   if (!updatedTask) return;
 
                   const updated = { ...tasksByStatus };
@@ -319,6 +323,7 @@ export default function Dashboard() {
                   }
 
                   setTasksByStatus(updated);
+                  await fetchStatusWiseCounts();
                 }}
               />
             )}

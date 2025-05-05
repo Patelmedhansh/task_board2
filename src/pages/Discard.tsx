@@ -139,7 +139,7 @@ export default function Discard() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className={`flex h-screen ${sidebarOpen ? "overflow-hidden" : "overflow-x-auto"}`}>
       <Sidebar sidebarOpen={sidebarOpen} />
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${

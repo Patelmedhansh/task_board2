@@ -25,7 +25,7 @@ type Action =
   | { type: "SET_STATUS_FILTER"; payload: string | null }
   | { type: "SET_CATEGORY_FILTER"; payload: string | null }
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
-  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
+  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null };}
   | { type: "SET_LIMIT"; payload: number | null }
   | { type: "SET_PAGE"; payload: number }
   | { type: "SET_LOADING"; payload: boolean }
@@ -96,7 +96,6 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-
 const statusKeyToStatusLabel = (key: StatusKey) =>
   key === "to-do" ? "To Do" : key === "in-progress" ? "In Progress" : "Done";
 
@@ -116,8 +115,7 @@ export function useTasks() {
     dispatch({ type: "SET_DATE_RANGE", payload: val });
   const setLimit = (val: number | null) =>
     dispatch({ type: "SET_LIMIT", payload: val });
-  const setPage = (val: number) =>
-    dispatch({ type: "SET_PAGE", payload: val });
+  const setPage = (val: number) => dispatch({ type: "SET_PAGE", payload: val });
   const setLoading = (val: boolean) =>
     dispatch({ type: "SET_LOADING", payload: val });
   const setHasMore = (val: boolean) =>
@@ -155,7 +153,7 @@ export function useTasks() {
       offset_count: offset,
       search_query: filters.searchQuery,
     });
-    console.log("length:", data.length, status);
+    // console.log("length:", data.length, status);
 
     return !error && data ? (data as Task[]) : [];
   };
@@ -165,7 +163,7 @@ export function useTasks() {
 
     const statuses = ["To Do", "In Progress", "Done"] as const;
     let newTasksByStatus: Record<StatusKey, Task[]> = reset
-      ? { "to-do": [], "in-progress": [], "done": [] }
+      ? { "to-do": [], "in-progress": [], done: [] }
       : { ...state.tasksByStatus };
 
     let tasksFetched = false;
@@ -176,7 +174,8 @@ export function useTasks() {
     for (const status of statuses) {
       const key = status.toLowerCase().replace(" ", "-") as StatusKey;
 
-      const isSelected = state.statusFilter === null || state.statusFilter === status;
+      const isSelected =
+        state.statusFilter === null || state.statusFilter === status;
 
       const filtersToApply = {
         categoryFilter: isSelected ? state.categoryFilter : null,
@@ -187,7 +186,11 @@ export function useTasks() {
         offset: currentPage * (state.limit ?? pageSize),
       };
 
-      const fetchedTasks = await fetchTasksByStatus(status, filtersToApply, reset);
+      const fetchedTasks = await fetchTasksByStatus(
+        status,
+        filtersToApply,
+        reset
+      );
       if (fetchedTasks.length > 0) tasksFetched = true;
 
       newTasksByStatus[key] = reset
@@ -247,7 +250,9 @@ export function useTasks() {
 
   const findColumnOfTask = (taskId: string): StatusKey | null => {
     for (const key of statusKeyArray) {
-      if (state.tasksByStatus[key].some((task) => task.id.toString() === taskId)) {
+      if (
+        state.tasksByStatus[key].some((task) => task.id.toString() === taskId)
+      ) {
         return key;
       }
     }
@@ -258,13 +263,13 @@ export function useTasks() {
     const statusLabels: Record<StatusKey, string> = {
       "to-do": "To Do",
       "in-progress": "In Progress",
-      "done": "Done",
+      done: "Done",
     };
 
     const counts: Record<StatusKey, number> = {
       "to-do": 0,
       "in-progress": 0,
-      "done": 0,
+      done: 0,
     };
 
     for (const key of statusKeyArray) {
@@ -273,13 +278,21 @@ export function useTasks() {
         .select("*", { count: "exact", head: true })
         .eq("status", statusLabels[key]);
 
-      if (state.statusFilter === null || state.statusFilter === statusLabels[key]) {
-        if (state.categoryFilter) query = query.eq("category", state.categoryFilter);
-        if (state.subcategoryFilter) query = query.eq("subcategory", state.subcategoryFilter);
+      if (
+        state.statusFilter === null ||
+        state.statusFilter === statusLabels[key]
+      ) {
+        if (state.categoryFilter)
+          query = query.eq("category", state.categoryFilter);
+        if (state.subcategoryFilter)
+          query = query.eq("subcategory", state.subcategoryFilter);
         if (state.dateRange?.from && state.dateRange?.to) {
-          query = query.gte("created_at", state.dateRange.from).lte("created_at", state.dateRange.to);
+          query = query
+            .gte("created_at", state.dateRange.from)
+            .lte("created_at", state.dateRange.to);
         }
-        if (state.searchQuery) query = query.ilike("title", `%${state.searchQuery}%`);
+        if (state.searchQuery)
+          query = query.ilike("title", `%${state.searchQuery}%`);
       }
 
       const { count } = await query;
@@ -303,28 +316,27 @@ export function useTasks() {
   //   state.limit,
   // ]);
 
-useEffect(() => {
-  const channel = supabase
-    .channel("realtime-projects")
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'projects'
-      },
-      (payload) => {
-        loadMoreTasks(true);
-        fetchStatusWiseCounts(); 
-      }
-    )
-    .subscribe();
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime-projects")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "projects",
+        },
+        (payload) => {
+          loadMoreTasks(true);
+          fetchStatusWiseCounts();
+        }
+      )
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [loadMoreTasks, fetchStatusWiseCounts]);
-
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadMoreTasks, fetchStatusWiseCounts]);
 
   return {
     tasksByStatus: state.tasksByStatus,

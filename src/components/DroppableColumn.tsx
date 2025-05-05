@@ -47,7 +47,7 @@ export function DroppableColumn({
   return (
     <div className="bg-white rounded-lg shadow p-4 min-h-[300px] flex flex-col">
       <div
-        className={`sticky top-0 z-10 bg-white p-2 font-semibold flex items-center ${
+        className={`sticky top-0 z-0 bg-white p-2 font-semibold flex items-center ${
           scrolled ? "shadow-sm border-b" : ""
         }`}
       >

@@ -9,10 +9,10 @@ interface SidebarProps {
 
 export default function Sidebar({ sidebarOpen }: SidebarProps) {
   return (
-    <aside className={`bg-white shadow-lg h-full fixed top-0 left-0 transition-all duration-300 z-10 ${sidebarOpen ? "w-64" : "w-16"}`}>
+    <aside className={`bg-white shadow-lg h-full fixed top-0 left-0 transition-all duration-300 z-20 ${sidebarOpen ? "w-64" : "w-16"}`}>
       <div className="flex flex-col items-center justify-between h-full">
         <div>
-          <div className="px-5 py-5 shadow">
+          <div className="px-5 py-5">
             {sidebarOpen && <img src={Logo} alt="Logo" className="h-10" />}
           </div>
           <nav className="mt-4">
