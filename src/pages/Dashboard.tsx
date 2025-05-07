@@ -26,9 +26,7 @@ export default function Dashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<
-    Record<string, string[]>
-  >({});
+  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -268,7 +266,7 @@ export default function Dashboard() {
                 setActiveTask(null);
               }}
             >
-              <div className="flex md:grid md:grid-cols-3 gap-4 mt-4 overflow-x-auto min-w-full">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
                 {statusKeyArray.map((col: StatusKey) => (
                   <DroppableColumn
                     key={col}

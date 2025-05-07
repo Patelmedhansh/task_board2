@@ -1,7 +1,6 @@
-import { useReducer } from "react";
+import { useReducer, useCallback, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
-import { useEffect } from "react";
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -25,7 +24,7 @@ type Action =
   | { type: "SET_STATUS_FILTER"; payload: string | null }
   | { type: "SET_CATEGORY_FILTER"; payload: string | null }
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
-  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null };}
+  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
   | { type: "SET_LIMIT"; payload: number | null }
   | { type: "SET_PAGE"; payload: number }
   | { type: "SET_LOADING"; payload: boolean }
@@ -153,12 +152,11 @@ export function useTasks() {
       offset_count: offset,
       search_query: filters.searchQuery,
     });
-    // console.log("length:", data.length, status);
 
     return !error && data ? (data as Task[]) : [];
   };
 
-  const loadMoreTasks = async (reset = false) => {
+  const loadMoreTasks = useCallback(async (reset = false) => {
     setLoading(true);
 
     const statuses = ["To Do", "In Progress", "Done"] as const;
@@ -167,7 +165,6 @@ export function useTasks() {
       : { ...state.tasksByStatus };
 
     let tasksFetched = false;
-
     const currentPage = reset ? 0 : state.page;
     const nextPage = reset ? 1 : state.page + 1;
 
@@ -199,14 +196,13 @@ export function useTasks() {
     }
 
     setTasksByStatus(newTasksByStatus);
-
     if (!tasksFetched) {
       setHasMore(false);
     } else {
       setPage(nextPage);
     }
     setLoading(false);
-  };
+  }, [state]);
 
   const moveTask = async (
     taskId: string,
@@ -246,6 +242,8 @@ export function useTasks() {
     if (error) {
       console.error("Failed to update task status:", error);
     }
+
+    await fetchStatusWiseCounts();
   };
 
   const findColumnOfTask = (taskId: string): StatusKey | null => {
@@ -259,7 +257,7 @@ export function useTasks() {
     return null;
   };
 
-  const fetchStatusWiseCounts = async () => {
+  const fetchStatusWiseCounts = useCallback(async () => {
     const statusLabels: Record<StatusKey, string> = {
       "to-do": "To Do",
       "in-progress": "In Progress",
@@ -300,21 +298,7 @@ export function useTasks() {
     }
 
     setTotalCountByStatus(counts);
-  };
-
-  // useEffect(() => {
-  //   resetPagination();
-  //   loadMoreTasks(true);
-  //   fetchStatusWiseCounts();
-  // }, [
-  //   state.statusFilter,
-  //   state.categoryFilter,
-  //   state.subcategoryFilter,
-  //   state.dateRange.from,
-  //   state.dateRange.to,
-  //   state.searchQuery,
-  //   state.limit,
-  // ]);
+  }, [state]);
 
   useEffect(() => {
     const channel = supabase
@@ -326,7 +310,7 @@ export function useTasks() {
           schema: "public",
           table: "projects",
         },
-        (payload) => {
+        () => {
           loadMoreTasks(true);
           fetchStatusWiseCounts();
         }

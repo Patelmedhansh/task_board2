@@ -28,29 +28,11 @@ export function DroppableColumn({
   onCardClick,
   totalCount,
 }: DroppableColumnProps) {
-  const columnContentRef = useRef<HTMLDivElement | null>(null);
-  const [scrolled, setScrolled] = useState(false);
   const { setNodeRef } = useDroppable({ id: columnId });
 
-  useEffect(() => {
-    const el = columnContentRef.current;
-    if (!el) return;
-
-    const handleScroll = () => {
-      setScrolled(el.scrollTop > 0);
-    };
-
-    el.addEventListener("scroll", handleScroll);
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
-
   return (
-    <div className="bg-white rounded-lg shadow p-4 min-h-[300px] flex flex-col">
-      <div
-        className={`sticky top-0 z-0 bg-white p-2 font-semibold flex items-center ${
-          scrolled ? "shadow-sm border-b" : ""
-        }`}
-      >
+    <div className="bg-white rounded-lg shadow p-4 flex flex-col w-full">
+      <div className="sticky top-[0px] z-20 bg-white p-2 font-semibold flex items-center">
         <span
           className={`w-3 h-3 rounded-full mr-2 ${
             columnId === "to-do"
@@ -63,13 +45,7 @@ export function DroppableColumn({
         {title} ({tasks.length} of {totalCount})
       </div>
 
-      <div
-        ref={(el) => {
-          columnContentRef.current = el;
-          setNodeRef(el);
-        }}
-        className="mt-2 flex-1 overflow-y-auto space-y-3"
-      >
+      <div ref={setNodeRef} className="mt-2 space-y-3">
         <SortableContext
           items={tasks.map((task) => task.id.toString())}
           strategy={verticalListSortingStrategy}

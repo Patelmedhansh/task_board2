@@ -42,7 +42,6 @@ export default function TaskDetailsModal({
   );
   const { setLoading } = useLoader();
 
-
   useEffect(() => {
     const fetchUser = async () => {
       const {
@@ -144,20 +143,27 @@ export default function TaskDetailsModal({
     if (!error && data && data.length > 0) setTask(data[0]);
     setLoading(false);
   };
-  
+
+  const formatDateToIST = (dateStr: string) => {
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(dateStr));
+  };
 
   const handleStatusChange = async (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const newStatus = e.target.value;
-  
+
     setLoading(true);
     const { error } = await supabase
       .from("projects")
       .update({ status: newStatus })
       .eq("id", taskId);
     setLoading(false);
-  
+
     if (!error) {
       const updatedTask = { ...task, status: newStatus };
       setTask(updatedTask);
@@ -167,7 +173,6 @@ export default function TaskDetailsModal({
       toast.error("Failed to update status");
     }
   };
-  
 
   const fetchComments = async () => {
     const { data, error } = await supabase
@@ -226,10 +231,10 @@ export default function TaskDetailsModal({
   };
 
   const handleDeleteComment = async (id: string) => {
-    setLoading(true); 
+    setLoading(true);
     const { error } = await supabase.from("comments").delete().eq("id", id);
     setLoading(false);
-  
+
     if (!error) {
       toast.success("Comment deleted");
       fetchComments();
@@ -237,7 +242,6 @@ export default function TaskDetailsModal({
       toast.error("Failed to delete comment");
     }
   };
-  
 
   const handleStartEdit = (comment: Comment) => {
     setEditingCommentId(comment.id);
@@ -327,9 +331,10 @@ export default function TaskDetailsModal({
                 {c.content}
               </p>
               <span className="text-xs text-gray-400">
-                {new Date(c.created_at).toLocaleString()}
+                {formatDateToIST(c.created_at)}
                 {c.updated_at && " (edited)"}
               </span>
+
               {currentUserId === c.user_id && (
                 <div className="mt-1 flex gap-2 text-xs">
                   {/* <button
@@ -392,7 +397,7 @@ export default function TaskDetailsModal({
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <div className="fixed inset-0 backdrop-blur-sm" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] p-4 sm:p-6 w-full max-w-5xl h-full sm:h-auto overflow-y-auto">
+          <DialogPanel className="bg-white rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] p-4 sm:p-6 w-full max-w-5xl h-full sm:h-auto overflow-y-auto">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-xl font-bold">{task.title}</h2>
               <button
@@ -403,7 +408,7 @@ export default function TaskDetailsModal({
               </button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              <div className="col-span-2">
+            <div className="order-2 lg:order-1 col-span-1 lg:col-span-2">
                 <div className="max-h-[75vh] overflow-y-auto pr-2">
                   <h3 className="font-semibold mb-1">Description</h3>
                   <div className="text-sm text-gray-700 whitespace-pre-line mb-4 overflow-y-auto rounded p-2">
@@ -458,7 +463,7 @@ export default function TaskDetailsModal({
                 </div>
               </div>
 
-              <div className="col-span-1 lg:col-span-1 w-full">
+              <div className="order-1 lg:order-2 col-span-1 w-full">
                 <h3 className="font-semibold mb-4">Details</h3>
                 <div className="bg-white rounded-lg border border-gray-200 px-4 sm:px-6 py-5 w-full">
                   <div className="mb-4 flex items-center justify-between">
