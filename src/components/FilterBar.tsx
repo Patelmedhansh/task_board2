@@ -55,7 +55,7 @@ export default function FilterBar({
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-        setCalendarOpen(false); // 👈 close the calendar
+        setCalendarOpen(false);
       }
     }
 
@@ -85,8 +85,8 @@ export default function FilterBar({
   
 
   return (
-    <div className="flex flex-wrap items-center gap-4 mb-6">
-      <div className="relative">
+    <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-4 mb-6">
+      <div className="relative w-full md:w-auto">
         <span className="absolute inset-y-0 left-3 flex items-center text-gray-400">
           <FontAwesomeIcon icon={faSearch} />
         </span>
@@ -95,7 +95,7 @@ export default function FilterBar({
           placeholder="Search"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="border border-gray-300 pl-10 pr-4 py-2 rounded text-sm w-48 bg-white"
+          className="w-full md:w-48 border border-gray-300 pl-10 pr-4 py-2 rounded text-sm bg-white"
         />
       </div>
 
@@ -103,7 +103,7 @@ export default function FilterBar({
         typeof setStatusFilter !== "undefined" && (
           <select
             onChange={(e) => setStatusFilter(e.target.value || null)}
-            className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+            className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
             value={statusFilter ?? ""}
           >
             <option value="">Status</option>
@@ -115,7 +115,7 @@ export default function FilterBar({
 
       <select
         onChange={(e) => setCategoryFilter(e.target.value || null)}
-        className="border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
+        className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
         value={categoryFilter ?? ""}
       >
         <option value="">Category</option>
@@ -129,7 +129,7 @@ export default function FilterBar({
       {categoryFilter && (
         <select
           onChange={(e) => setSubcategoryFilter(e.target.value || null)}
-          className="border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
+          className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
           value={subcategoryFilter ?? ""}
         >
           <option value="">Subcategory</option>
@@ -141,11 +141,11 @@ export default function FilterBar({
         </select>
       )}
 
-      <div className="relative flex items-center">
+      <div className="relative w-full md:w-auto flex items-center">
         <button
           type="button"
           onClick={() => setCalendarOpen((open) => !open)}
-          className="border border-gray-300 px-3 py-2 rounded text-sm w-48 text-left bg-white"
+          className="w-full md:w-48 border border-gray-300 px-3 py-2 rounded text-sm w-48 text-left bg-white"
         >
           {dateRange.from && dateRange.to
             ? `${new Date(dateRange.from).toLocaleDateString()} - ${new Date(
@@ -196,7 +196,7 @@ export default function FilterBar({
 
       <select
         onChange={(e) => setLimit(Number(e.target.value) || null)}
-        className="border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+        className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
         value={limit ?? ""}
       >
         <option value="">Limit</option>

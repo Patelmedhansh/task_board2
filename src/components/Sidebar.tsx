@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTachometerAlt, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
 import Logo from "../assets/Logo.png";
+import SmallLogo from "../assets/image.png";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -16,14 +17,16 @@ export default function Sidebar({ sidebarOpen }: SidebarProps) {
     >
       <div className="flex flex-col items-center justify-between h-full">
         <div>
-          <div className="px-5 py-5 flex justify-center">
-            <img
-              src={Logo}
-              alt="Logo"
-              className={`${
-                sidebarOpen ? "h-10" : "h-8"
-              } w-auto object-contain transition-all duration-300`}
-            />
+          <div className="flex justify-center items-center pt-4">
+            {sidebarOpen ? (
+              <img src={Logo} alt="Full Logo" className="h-10 object-contain" />
+            ) : (
+              <img
+                src={SmallLogo}
+                alt="Logo Icon"
+                className="h-8 w-8 object-contain"
+              />
+            )}
           </div>
 
           <nav className="mt-4">

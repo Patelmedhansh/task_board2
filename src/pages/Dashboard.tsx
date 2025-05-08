@@ -26,11 +26,14 @@ export default function Dashboard() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
+  const [subcategoryMap, setSubcategoryMap] = useState<
+    Record<string, string[]>
+  >({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState("to-do");
 
   const {
     tasksByStatus,
@@ -223,7 +226,7 @@ export default function Dashboard() {
           handleLogout={handleLogout}
         />
 
-        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-20 min-h-0">
+        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-10 min-h-0">
           <h1 className="font-bold text-2xl mb-2">Dashboard</h1>
 
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
@@ -243,6 +246,32 @@ export default function Dashboard() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
             />
+          </div>
+
+          <div className="md:hidden bg-gray-200 rounded-xl p-1 flex justify-between items-center mb-4">
+            {statusKeyArray.map((col) => (
+              <button
+                key={col}
+                onClick={() => setActiveMobileTab(col)}
+                className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors duration-200
+        ${
+          activeMobileTab === col
+            ? "bg-white shadow text-black"
+            : "bg-transparent text-gray-600"
+        }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  {col === "to-do" && (
+                    <span className="text-yellow-500">●</span>
+                  )}
+                  {col === "in-progress" && (
+                    <span className="text-blue-500">●</span>
+                  )}
+                  {col === "done" && <span className="text-green-500">●</span>}
+                  {columnMap[col]} ({totalCountByStatus[col] || 0})
+                </span>
+              </button>
+            ))}
           </div>
 
           <div className="flex-1 overflow-y-auto min-h-0" ref={scrollRef}>
@@ -266,7 +295,22 @@ export default function Dashboard() {
                 setActiveTask(null);
               }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+              <div className="md:hidden">
+                <DroppableColumn
+                  key={activeMobileTab}
+                  columnId={activeMobileTab}
+                  title={columnMap[activeMobileTab]}
+                  tasks={tasksByStatus[activeMobileTab]}
+                  totalCount={totalCountByStatus[activeMobileTab]}
+                  setActiveTask={setActiveTask}
+                  isDragging={isDragging}
+                  onCardClick={(id) => {
+                    setSelectedTaskId(id);
+                    setModalOpen(true);
+                  }}
+                />
+              </div>
+              <div className="hidden md:grid grid-cols-3 gap-4 h-[calc(100vh-200px)]">
                 {statusKeyArray.map((col: StatusKey) => (
                   <DroppableColumn
                     key={col}

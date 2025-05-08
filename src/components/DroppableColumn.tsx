@@ -31,7 +31,7 @@ export function DroppableColumn({
   const { setNodeRef } = useDroppable({ id: columnId });
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 flex flex-col w-full">
+    <div className="bg-white rounded-lg shadow px-4 flex flex-col w-full">
       <div className="sticky top-[0px] z-20 bg-white p-2 font-semibold flex items-center">
         <span
           className={`w-3 h-3 rounded-full mr-2 ${
