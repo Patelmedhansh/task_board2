@@ -1,6 +1,7 @@
 import { useReducer, useCallback, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
+import debounce from 'lodash.debounce';
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -300,6 +301,11 @@ export function useTasks() {
     setTotalCountByStatus(counts);
   }, [state]);
 
+  const debouncedRealtimeUpdate = debounce(() => {
+    loadMoreTasks(true);
+    fetchStatusWiseCounts();
+  }, 300);
+  
   useEffect(() => {
     const channel = supabase
       .channel("realtime-projects")
@@ -311,16 +317,16 @@ export function useTasks() {
           table: "projects",
         },
         () => {
-          loadMoreTasks(true);
-          fetchStatusWiseCounts();
+          debouncedRealtimeUpdate();
         }
       )
       .subscribe();
-
+  
     return () => {
       supabase.removeChannel(channel);
+      debouncedRealtimeUpdate.cancel();
     };
-  }, [loadMoreTasks, fetchStatusWiseCounts]);
+  }, []);
 
   return {
     tasksByStatus: state.tasksByStatus,

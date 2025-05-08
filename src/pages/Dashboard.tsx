@@ -268,7 +268,7 @@ export default function Dashboard() {
                     <span className="text-blue-500">●</span>
                   )}
                   {col === "done" && <span className="text-green-500">●</span>}
-                  {columnMap[col]} ({totalCountByStatus[col] || 0})
+                  {columnMap[col]} 
                 </span>
               </button>
             ))}

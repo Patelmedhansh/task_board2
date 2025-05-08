@@ -11,7 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ sidebarOpen }: SidebarProps) {
   return (
     <aside
-      className={`bg-white shadow-lg h-full fixed top-0 left-0 transition-all duration-300 z-20 ${
+      className={`bg-white shadow-lg h-full fixed sm-relative top-0 left-0 transition-all duration-300 z-20 ${
         sidebarOpen ? "w-64" : "w-16"
       }`}
     >

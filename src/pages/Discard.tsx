@@ -155,7 +155,7 @@ export default function Discard() {
           handleLogout={handleLogout}
         />
 
-        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-20 min-h-0">
+        <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-10 min-h-0">
           <h1 className="font-bold text-2xl mb-6">Discard</h1>
 
           <div className="bg-gray-100 sticky top-20 z-10 pb-4">
@@ -209,6 +209,12 @@ export default function Discard() {
           </div>
         </div>
       </div>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-30 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <LogoutConfirmDialog
         isOpen={showLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}
