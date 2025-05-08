@@ -1,5 +1,9 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faSignOutAlt, faUserCircle } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBars,
+  faSignOutAlt,
+  faUserCircle,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dispatch, SetStateAction } from "react";
 
 interface HeaderProps {
@@ -21,22 +25,26 @@ export default function Header({
 }: HeaderProps) {
   return (
     <header
-      className={`flex items-center justify-between bg-white p-4 fixed top-0 right-0 z-10 transition-all duration-300 ${
-        sidebarOpen ? "left-64" : "left-16"
-      }`}
-    >
+  className={`flex items-center justify-between bg-white p-4 fixed top-0 right-0 z-30 transition-all duration-300
+    ${sidebarOpen ? "md:left-64" : "md:left-16"} left-0`}
+>
+
       <div className="flex items-center gap-4 ml-4">
         <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <FontAwesomeIcon icon={faBars} size="lg" />
         </button>
       </div>
-      <div className="relative mr-4">
+      <div className="relative mr-4 hidden md:block">
         <div
           className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-gray-100"
           onClick={() => setDropdownOpen(!dropdownOpen)}
         >
           <FontAwesomeIcon icon={faUserCircle} size="lg" />
-          {userEmail && <span className="text-sm font-medium hidden sm:inline">{userEmail}</span>}
+          {userEmail && (
+            <span className="text-sm font-medium hidden sm:inline">
+              {userEmail}
+            </span>
+          )}
         </div>
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-md py-2 z-50">

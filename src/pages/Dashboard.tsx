@@ -50,7 +50,8 @@ export default function Dashboard() {
     setLimit,
     loadMoreTasks,
     loading,
-    hasMore,
+    hasMoreByStatus,
+    pageByStatus,
     resetPagination,
     moveTask,
     findColumnOfTask,
@@ -107,6 +108,27 @@ export default function Dashboard() {
   ]);
 
   useEffect(() => {
+    if (window.innerWidth < 768) return;
+  
+    const scrollEl = scrollRef.current;
+    const handleScroll = () => {
+      if (
+        scrollEl &&
+        scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 300 &&
+        !loading
+      ) {
+        loadMoreTasks();
+      }
+    };
+  
+    scrollEl?.addEventListener("scroll", handleScroll);
+    return () => scrollEl?.removeEventListener("scroll", handleScroll);
+  }, [loading, loadMoreTasks]);
+  
+
+  useEffect(() => {
+    if (window.innerWidth >= 768) return;
+
     const scrollEl = scrollRef.current;
     const handleScroll = () => {
       if (
@@ -114,14 +136,31 @@ export default function Dashboard() {
         scrollEl.scrollTop + scrollEl.clientHeight >=
           scrollEl.scrollHeight - 300 &&
         !loading &&
-        hasMore
+        hasMoreByStatus[activeMobileTab] &&
+        tasksByStatus[activeMobileTab].length <
+          totalCountByStatus[activeMobileTab]
       ) {
-        loadMoreTasks();
+        loadMoreTasks(false, activeMobileTab);
       }
     };
+
     scrollEl?.addEventListener("scroll", handleScroll);
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore, loadMoreTasks]);
+  }, [
+    activeMobileTab,
+    loading,
+    hasMoreByStatus,
+    tasksByStatus,
+    totalCountByStatus,
+    loadMoreTasks,
+  ]);
+
+  useEffect(() => {
+    if (window.innerWidth < 768 && scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [activeMobileTab]);
+  
 
   useEffect(() => {
     const fetchCategoryData = async () => {
@@ -207,15 +246,25 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`flex h-screen ${
+      className={`flex min-h-screen ${
         sidebarOpen ? "overflow-hidden" : "overflow-x-auto"
       }`}
     >
-      <Sidebar sidebarOpen={sidebarOpen} />
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        userEmail={userEmail}
+        setSidebarOpen={setSidebarOpen}
+        handleLogout={handleLogout}
+      />
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? "ml-64" : "ml-16"
-        }`}
+        className={`flex-1 flex flex-col transition-all duration-300
+    ${
+      sidebarOpen && window.innerWidth >= 768
+        ? "ml-64"
+        : window.innerWidth >= 768
+        ? "ml-16"
+        : ""
+    }`}
       >
         <Header
           sidebarOpen={sidebarOpen}
@@ -268,13 +317,20 @@ export default function Dashboard() {
                     <span className="text-blue-500">●</span>
                   )}
                   {col === "done" && <span className="text-green-500">●</span>}
-                  {columnMap[col]} 
+                  {columnMap[col]}
                 </span>
               </button>
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto min-h-0" ref={scrollRef}>
+          <div
+            ref={scrollRef}
+            className="overflow-y-auto"
+            style={{
+              maxHeight:
+                window.innerWidth < 768 ? "calc(100vh - 180px)" : "unset",
+            }}
+          >
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -337,11 +393,14 @@ export default function Dashboard() {
               </DragOverlay>
             </DndContext>
 
-            {loading && (
-              <p className="text-center mt-4 text-gray-500">
-                Loading more tasks...
-              </p>
-            )}
+            {loading &&
+              tasksByStatus[activeMobileTab]?.length <
+                totalCountByStatus[activeMobileTab] && (
+                <p className="text-center mt-4 text-gray-500">
+                  Loading more tasks...
+                </p>
+              )}
+
             {selectedTaskId && (
               <TaskDetailsModal
                 taskId={selectedTaskId}
@@ -372,7 +431,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 backdrop-blur-sm z-30 sm:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <LogoutConfirmDialog
         isOpen={showLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}

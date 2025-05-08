@@ -26,6 +26,7 @@ export default function TaskDetailsModal({
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComment, setLoadingComment] = useState(false);
+  const [editingLoading, setEditingLoading] = useState(false);
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState<string>("");
@@ -250,10 +251,13 @@ export default function TaskDetailsModal({
   };
 
   const handleSaveEdit = async (id: string) => {
+    setEditingLoading(true);
     const { error } = await supabase
       .from("comments")
       .update({ content: editingContent, updated_at: new Date().toISOString() })
       .eq("id", id);
+    setEditingLoading(false);
+
     if (!error) {
       toast.success("Comment updated!");
       setEditingCommentId(null);
@@ -311,12 +315,13 @@ export default function TaskDetailsModal({
               />
               <div className="flex gap-2">
                 <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-xs"
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-xs disabled:opacity-50"
                   onClick={() => handleSaveEdit(c.id)}
-                  disabled={editingContent.trim() === ""}
+                  disabled={editingLoading || editingContent.trim() === ""}
                 >
-                  Save
+                  {editingLoading ? "Saving..." : "Save"}
                 </button>
+
                 <button
                   className="text-xs text-gray-600 hover:text-black"
                   onClick={() => setEditingCommentId(null)}
@@ -408,7 +413,7 @@ export default function TaskDetailsModal({
               </button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            <div className="order-2 lg:order-1 col-span-1 lg:col-span-2">
+              <div className="order-2 lg:order-1 col-span-1 lg:col-span-2">
                 <div className="max-h-[75vh] overflow-y-auto pr-2">
                   <h3 className="font-semibold mb-1">Description</h3>
                   <div className="text-sm text-gray-700 whitespace-pre-line mb-4 overflow-y-auto rounded p-2">
@@ -446,12 +451,13 @@ export default function TaskDetailsModal({
                   />
                   <div className="flex gap-2">
                     <button
-                      className="bg-orange-600 text-white px-4 py-1 rounded text-sm"
+                      className="bg-orange-600 text-white px-4 py-1 rounded text-sm disabled:opacity-50"
                       onClick={handleAddComment}
                       disabled={loadingComment || !comment.trim()}
                     >
-                      Save
+                      {loadingComment ? "Saving..." : "Save"}
                     </button>
+
                     <button
                       className="text-sm text-gray-600 hover:text-black"
                       onClick={() => setComment("")}

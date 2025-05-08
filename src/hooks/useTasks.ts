@@ -1,7 +1,7 @@
 import { useReducer, useCallback, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
-import debounce from 'lodash.debounce';
+import debounce from "lodash.debounce";
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -13,9 +13,9 @@ type State = {
   subcategoryFilter: string | null;
   dateRange: { from: string | null; to: string | null };
   limit: number | null;
-  page: number;
+  pageByStatus: Record<StatusKey, number>;
+  hasMoreByStatus: Record<StatusKey, boolean>;
   loading: boolean;
-  hasMore: boolean;
   searchQuery: string | null;
   totalCountByStatus: Record<StatusKey, number>;
 };
@@ -27,9 +27,9 @@ type Action =
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
   | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
   | { type: "SET_LIMIT"; payload: number | null }
-  | { type: "SET_PAGE"; payload: number }
+  | { type: "SET_PAGE_BY_STATUS"; payload: { status: StatusKey; page: number } }
+  | { type: "SET_HAS_MORE_BY_STATUS"; payload: { status: StatusKey; hasMore: boolean } }
   | { type: "SET_LOADING"; payload: boolean }
-  | { type: "SET_HAS_MORE"; payload: boolean }
   | { type: "SET_SEARCH_QUERY"; payload: string | null }
   | { type: "SET_TOTAL_COUNT_BY_STATUS"; payload: Record<StatusKey, number> }
   | { type: "RESET_PAGINATION" };
@@ -45,10 +45,18 @@ const initialState: State = {
   subcategoryFilter: null,
   dateRange: { from: null, to: null },
   limit: null,
-  page: 0,
   loading: false,
-  hasMore: true,
   searchQuery: null,
+  pageByStatus: {
+    "to-do": 0,
+    "in-progress": 0,
+    done: 0,
+  },
+  hasMoreByStatus: {
+    "to-do": true,
+    "in-progress": true,
+    done: true,
+  },
   totalCountByStatus: {
     "to-do": 0,
     "in-progress": 0,
@@ -70,21 +78,41 @@ function reducer(state: State, action: Action): State {
       return { ...state, dateRange: action.payload };
     case "SET_LIMIT":
       return { ...state, limit: action.payload };
-    case "SET_PAGE":
-      return { ...state, page: action.payload };
     case "SET_LOADING":
       return { ...state, loading: action.payload };
-    case "SET_HAS_MORE":
-      return { ...state, hasMore: action.payload };
     case "SET_SEARCH_QUERY":
       return { ...state, searchQuery: action.payload };
+    case "SET_PAGE_BY_STATUS":
+      return {
+        ...state,
+        pageByStatus: {
+          ...state.pageByStatus,
+          [action.payload.status]: action.payload.page,
+        },
+      };
+    case "SET_HAS_MORE_BY_STATUS":
+      return {
+        ...state,
+        hasMoreByStatus: {
+          ...state.hasMoreByStatus,
+          [action.payload.status]: action.payload.hasMore,
+        },
+      };
     case "SET_TOTAL_COUNT_BY_STATUS":
       return { ...state, totalCountByStatus: action.payload };
     case "RESET_PAGINATION":
       return {
         ...state,
-        page: 0,
-        hasMore: true,
+        pageByStatus: {
+          "to-do": 0,
+          "in-progress": 0,
+          done: 0,
+        },
+        hasMoreByStatus: {
+          "to-do": true,
+          "in-progress": true,
+          done: true,
+        },
         tasksByStatus: {
           "to-do": [],
           "in-progress": [],
@@ -115,16 +143,13 @@ export function useTasks() {
     dispatch({ type: "SET_DATE_RANGE", payload: val });
   const setLimit = (val: number | null) =>
     dispatch({ type: "SET_LIMIT", payload: val });
-  const setPage = (val: number) => dispatch({ type: "SET_PAGE", payload: val });
   const setLoading = (val: boolean) =>
     dispatch({ type: "SET_LOADING", payload: val });
-  const setHasMore = (val: boolean) =>
-    dispatch({ type: "SET_HAS_MORE", payload: val });
   const setSearchQuery = (val: string | null) =>
     dispatch({ type: "SET_SEARCH_QUERY", payload: val });
+  const resetPagination = () => dispatch({ type: "RESET_PAGINATION" });
   const setTotalCountByStatus = (val: Record<StatusKey, number>) =>
     dispatch({ type: "SET_TOTAL_COUNT_BY_STATUS", payload: val });
-  const resetPagination = () => dispatch({ type: "RESET_PAGINATION" });
 
   const fetchTasksByStatus = async (
     status: string,
@@ -139,8 +164,7 @@ export function useTasks() {
     reset = false
   ): Promise<Task[]> => {
     const offset =
-      filters.offset ??
-      (reset ? 0 : state.page * (filters.limit ?? state.limit ?? pageSize));
+      filters.offset ?? 0;
     const limitCount = filters.limit ?? state.limit ?? pageSize;
 
     const { data, error } = await supabase.rpc("get_tasks_by_status", {
@@ -157,53 +181,55 @@ export function useTasks() {
     return !error && data ? (data as Task[]) : [];
   };
 
-  const loadMoreTasks = useCallback(async (reset = false) => {
-    setLoading(true);
+  const loadMoreTasks = useCallback(
+    async (reset = false, specificStatus?: StatusKey) => {
+      setLoading(true);
 
-    const statuses = ["To Do", "In Progress", "Done"] as const;
-    let newTasksByStatus: Record<StatusKey, Task[]> = reset
-      ? { "to-do": [], "in-progress": [], done: [] }
-      : { ...state.tasksByStatus };
+      const statuses = specificStatus
+        ? [specificStatus]
+        : (["to-do", "in-progress", "done"] as StatusKey[]);
 
-    let tasksFetched = false;
-    const currentPage = reset ? 0 : state.page;
-    const nextPage = reset ? 1 : state.page + 1;
+      const newTasksByStatus: Record<StatusKey, Task[]> = reset
+        ? { "to-do": [], "in-progress": [], done: [] }
+        : { ...state.tasksByStatus };
 
-    for (const status of statuses) {
-      const key = status.toLowerCase().replace(" ", "-") as StatusKey;
+      for (const key of statuses) {
+        const label = statusKeyToStatusLabel(key);
+        const page = reset ? 0 : state.pageByStatus[key];
+        const offset = page * (state.limit ?? pageSize);
 
-      const isSelected =
-        state.statusFilter === null || state.statusFilter === status;
+        const fetched = await fetchTasksByStatus(
+          label,
+          {
+            categoryFilter: state.categoryFilter,
+            subcategoryFilter: state.subcategoryFilter,
+            dateRange: state.dateRange,
+            searchQuery: state.searchQuery,
+            limit: state.limit,
+            offset,
+          },
+          reset
+        );
 
-      const filtersToApply = {
-        categoryFilter: isSelected ? state.categoryFilter : null,
-        subcategoryFilter: isSelected ? state.subcategoryFilter : null,
-        dateRange: isSelected ? state.dateRange : { from: null, to: null },
-        searchQuery: isSelected ? state.searchQuery : null,
-        limit: state.limit,
-        offset: currentPage * (state.limit ?? pageSize),
-      };
+        newTasksByStatus[key] = reset
+          ? fetched
+          : [...(state.tasksByStatus[key] || []), ...fetched];
 
-      const fetchedTasks = await fetchTasksByStatus(
-        status,
-        filtersToApply,
-        reset
-      );
-      if (fetchedTasks.length > 0) tasksFetched = true;
+        dispatch({
+          type: "SET_PAGE_BY_STATUS",
+          payload: { status: key, page: page + 1 },
+        });
+        dispatch({
+          type: "SET_HAS_MORE_BY_STATUS",
+          payload: { status: key, hasMore: fetched.length > 0 },
+        });
+      }
 
-      newTasksByStatus[key] = reset
-        ? fetchedTasks
-        : [...(state.tasksByStatus[key] || []), ...fetchedTasks];
-    }
-
-    setTasksByStatus(newTasksByStatus);
-    if (!tasksFetched) {
-      setHasMore(false);
-    } else {
-      setPage(nextPage);
-    }
-    setLoading(false);
-  }, [state]);
+      setTasksByStatus(newTasksByStatus);
+      setLoading(false);
+    },
+    [state]
+  );
 
   const moveTask = async (
     taskId: string,
@@ -240,9 +266,7 @@ export function useTasks() {
       new_status: updatedTask.status,
     });
 
-    if (error) {
-      console.error("Failed to update task status:", error);
-    }
+    if (error) console.error("Failed to update task status:", error);
 
     await fetchStatusWiseCounts();
   };
@@ -305,7 +329,7 @@ export function useTasks() {
     loadMoreTasks(true);
     fetchStatusWiseCounts();
   }, 300);
-  
+
   useEffect(() => {
     const channel = supabase
       .channel("realtime-projects")
@@ -321,7 +345,7 @@ export function useTasks() {
         }
       )
       .subscribe();
-  
+
     return () => {
       supabase.removeChannel(channel);
       debouncedRealtimeUpdate.cancel();
@@ -343,7 +367,8 @@ export function useTasks() {
     setLimit,
     loadMoreTasks,
     loading: state.loading,
-    hasMore: state.hasMore,
+    hasMoreByStatus: state.hasMoreByStatus,
+    pageByStatus: state.pageByStatus,
     resetPagination,
     moveTask,
     findColumnOfTask,

@@ -139,12 +139,26 @@ export default function Discard() {
   };
 
   return (
-    <div className={`flex h-screen ${sidebarOpen ? "overflow-hidden" : "overflow-x-auto"}`}>
-      <Sidebar sidebarOpen={sidebarOpen} />
+    <div
+      className={`flex h-screen ${
+        sidebarOpen ? "overflow-hidden" : "overflow-x-auto"
+      }`}
+    >
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        userEmail={userEmail}
+        setSidebarOpen={setSidebarOpen}
+        handleLogout={handleLogout}
+      />
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? "ml-64" : "ml-16"
-        }`}
+        className={`flex-1 flex flex-col transition-all duration-300
+    ${
+      sidebarOpen && window.innerWidth >= 768
+        ? "ml-64"
+        : window.innerWidth >= 768
+        ? "ml-16"
+        : ""
+    }`}
       >
         <Header
           sidebarOpen={sidebarOpen}
@@ -211,7 +225,7 @@ export default function Discard() {
       </div>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 z-30 sm:hidden"
+          className="fixed inset-0 backdrop-blur-sm z-30 sm:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
