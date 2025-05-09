@@ -3,8 +3,10 @@ import {
   faBars,
   faSignOutAlt,
   faUserCircle,
+  faCaretDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Dispatch, SetStateAction } from "react";
+import Logo from "../assets/Logo.png";
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -25,16 +27,23 @@ export default function Header({
 }: HeaderProps) {
   return (
     <header
-  className={`flex items-center justify-between bg-white p-4 fixed top-0 right-0 z-30 transition-all duration-300
-    ${sidebarOpen ? "md:left-64" : "md:left-16"} left-0`}
->
-
-      <div className="flex items-center gap-4 ml-4">
+      className={`flex items-center justify-between bg-white px-4 py-2 fixed top-0 right-0 z-30 h-14
+  ${sidebarOpen ? "md:left-64" : "md:left-16"} left-0`}
+    >
+      {/* Hamburger */}
+      <div className="flex items-center gap-4">
         <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <FontAwesomeIcon icon={faBars} size="lg" />
         </button>
       </div>
-      <div className="relative mr-4 hidden md:block">
+
+      {/* Centered logo on mobile */}
+      <div className="absolute left-1/2 transform -translate-x-1/2 md:hidden">
+        <img src={Logo} alt="Logo" className="h-6" />
+      </div>
+
+      {/* User profile + dropdown on desktop */}
+      <div className="relative hidden md:block">
         <div
           className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-gray-100"
           onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -45,7 +54,9 @@ export default function Header({
               {userEmail}
             </span>
           )}
+          <FontAwesomeIcon icon={faCaretDown} className="text-gray-500" />
         </div>
+
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-40 bg-white shadow-md rounded-md py-2 z-50">
             <div

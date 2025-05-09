@@ -278,7 +278,7 @@ export default function Dashboard() {
         <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-10 min-h-0">
           <h1 className="font-bold text-2xl mb-2">Dashboard</h1>
 
-          <div className="bg-gray-100 sticky top-20 z-10 pb-4">
+          <div className="bg-gray-100 sticky top-20 z-10">
             <FilterBar
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
@@ -328,7 +328,7 @@ export default function Dashboard() {
             className="overflow-y-auto"
             style={{
               maxHeight:
-                window.innerWidth < 768 ? "calc(100vh - 180px)" : "unset",
+                window.innerWidth < 768 ? "calc(100vh - 150px)" : "unset",
             }}
           >
             <DndContext

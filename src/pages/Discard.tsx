@@ -140,7 +140,7 @@ export default function Discard() {
 
   return (
     <div
-      className={`flex h-screen ${
+      className={`flex min-h-screen ${
         sidebarOpen ? "overflow-hidden" : "overflow-x-auto"
       }`}
     >
@@ -170,9 +170,9 @@ export default function Discard() {
         />
 
         <div className="flex-1 flex flex-col p-6 bg-gray-100 mt-10 min-h-0">
-          <h1 className="font-bold text-2xl mb-6">Discard</h1>
+          <h1 className="font-bold text-2xl mb-2">Discard</h1>
 
-          <div className="bg-gray-100 sticky top-20 z-10 pb-4">
+          <div className="bg-gray-100 sticky top-20 z-10">
             <FilterBar
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
@@ -189,13 +189,21 @@ export default function Discard() {
             />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4 mt-4 flex flex-col flex-1 min-h-0">
+          <div className="bg-white rounded-lg shadow p-4 flex flex-col">
             <div className="font-semibold mb-4 flex items-center text-red-500">
               <span className="w-3 h-3 bg-red-500 rounded-full mr-2" />
               Discard
             </div>
 
-            <div className="space-y-3 overflow-y-auto pr-2 flex-1 min-h-0">
+            <div
+              className="space-y-3 overflow-y-auto pr-2"
+              style={{
+                maxHeight:
+                  window.innerWidth < 768
+                    ? "calc(100vh - 260px)"
+                    : "calc(100vh - 260px)",
+              }}
+            >
               {discardedTasks.map((task) => (
                 <div
                   key={task.id}

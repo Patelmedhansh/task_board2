@@ -173,15 +173,19 @@ export default function FilterBar({
           </button>
         )}
         {calendarOpen && (
-          <div ref={calendarRef} className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <div ref={calendarRef} className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200">
             <DateRange
               ranges={range}
               onChange={(item) => {
-                const start = item.selection.startDate?.toISOString();
-                const end = item.selection.endDate?.toISOString();
-                if (start && end) {
+                const start = item.selection.startDate;
+                const end = item.selection.endDate;
+              
+                if (start && end && start.getTime() !== end.getTime()) {
                   setRange([item.selection]);
-                  setDateRange({ from: start, to: end });
+                  setDateRange({ from: start.toISOString(), to: end.toISOString() });
+                  setCalendarOpen(false);
+                } else {
+                  setRange([item.selection]);
                 }
               }}
               moveRangeOnFirstSelection={false}
