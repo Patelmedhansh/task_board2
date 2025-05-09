@@ -397,4 +397,4 @@ export function useTasks() {
     totalCountByStatus: state.totalCountByStatus,
     statusKeyArray,
   };
-}, []);
+}
