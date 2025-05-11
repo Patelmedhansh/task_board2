@@ -18,6 +18,7 @@ type State = {
   loading: boolean;
   searchQuery: string | null;
   totalCountByStatus: Record<StatusKey, number>;
+  filtersChanged: boolean;
 };
 
 type Action =
@@ -25,20 +26,15 @@ type Action =
   | { type: "SET_STATUS_FILTER"; payload: string | null }
   | { type: "SET_CATEGORY_FILTER"; payload: string | null }
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
-  | {
-      type: "SET_DATE_RANGE";
-      payload: { from: string | null; to: string | null };
-    }
+  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
   | { type: "SET_LIMIT"; payload: number | null }
   | { type: "SET_PAGE_BY_STATUS"; payload: { status: StatusKey; page: number } }
-  | {
-      type: "SET_HAS_MORE_BY_STATUS";
-      payload: { status: StatusKey; hasMore: boolean };
-    }
+  | { type: "SET_HAS_MORE_BY_STATUS"; payload: { status: StatusKey; hasMore: boolean } }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_SEARCH_QUERY"; payload: string | null }
   | { type: "SET_TOTAL_COUNT_BY_STATUS"; payload: Record<StatusKey, number> }
-  | { type: "RESET_PAGINATION" };
+  | { type: "RESET_PAGINATION" }
+  | { type: "SET_FILTERS_CHANGED"; payload: boolean };
 
 const initialState: State = {
   tasksByStatus: {
@@ -68,6 +64,7 @@ const initialState: State = {
     "in-progress": 0,
     done: 0,
   },
+  filtersChanged: false,
 };
 
 function reducer(state: State, action: Action): State {
@@ -75,19 +72,19 @@ function reducer(state: State, action: Action): State {
     case "SET_TASKS_BY_STATUS":
       return { ...state, tasksByStatus: action.payload };
     case "SET_STATUS_FILTER":
-      return { ...state, statusFilter: action.payload };
+      return { ...state, statusFilter: action.payload, filtersChanged: true };
     case "SET_CATEGORY_FILTER":
-      return { ...state, categoryFilter: action.payload };
+      return { ...state, categoryFilter: action.payload, filtersChanged: true };
     case "SET_SUBCATEGORY_FILTER":
-      return { ...state, subcategoryFilter: action.payload };
+      return { ...state, subcategoryFilter: action.payload, filtersChanged: true };
     case "SET_DATE_RANGE":
-      return { ...state, dateRange: action.payload };
+      return { ...state, dateRange: action.payload, filtersChanged: true };
     case "SET_LIMIT":
-      return { ...state, limit: action.payload };
+      return { ...state, limit: action.payload, filtersChanged: true };
     case "SET_LOADING":
       return { ...state, loading: action.payload };
     case "SET_SEARCH_QUERY":
-      return { ...state, searchQuery: action.payload };
+      return { ...state, searchQuery: action.payload, filtersChanged: true };
     case "SET_PAGE_BY_STATUS":
       return {
         ...state,
@@ -113,6 +110,8 @@ function reducer(state: State, action: Action): State {
         hasMoreByStatus: { "to-do": true, "in-progress": true, done: true },
         tasksByStatus: { "to-do": [], "in-progress": [], done: [] },
       };
+    case "SET_FILTERS_CHANGED":
+      return { ...state, filtersChanged: action.payload };
     default:
       return state;
   }
@@ -144,6 +143,8 @@ export function useTasks() {
   const resetPagination = () => dispatch({ type: "RESET_PAGINATION" });
   const setTotalCountByStatus = (val: Record<StatusKey, number>) =>
     dispatch({ type: "SET_TOTAL_COUNT_BY_STATUS", payload: val });
+  const setFiltersChanged = (val: boolean) =>
+    dispatch({ type: "SET_FILTERS_CHANGED", payload: val });
 
   const fetchTasksByStatus = async (
     status: string,
@@ -184,54 +185,57 @@ export function useTasks() {
         ? { "to-do": [], "in-progress": [], done: [] }
         : { ...state.tasksByStatus };
 
-        for (const key of statuses) {
-          const label = statusKeyToStatusLabel(key);
-          const page = reset ? 0 : state.pageByStatus[key];
-          const offset = page * (state.limit ?? pageSize);
-        
-          let filtered = {
-            categoryFilter: null,
-            subcategoryFilter: null,
-            dateRange: { from: null, to: null },
-            searchQuery: null,
+      for (const key of statuses) {
+        const label = statusKeyToStatusLabel(key);
+        const page = reset ? 0 : state.pageByStatus[key];
+        const offset = page * (state.limit ?? pageSize);
+
+        let filtered = {
+          categoryFilter: null,
+          subcategoryFilter: null,
+          dateRange: { from: null, to: null },
+          searchQuery: null,
+        };
+
+        if (!state.statusFilter || state.statusFilter === label) {
+          filtered = {
+            categoryFilter: state.categoryFilter,
+            subcategoryFilter: state.subcategoryFilter,
+            dateRange: state.dateRange,
+            searchQuery: state.searchQuery,
           };
-        
-          if (!state.statusFilter || state.statusFilter === label) {
-            filtered = {
-              categoryFilter: state.categoryFilter,
-              subcategoryFilter: state.subcategoryFilter,
-              dateRange: state.dateRange,
-              searchQuery: state.searchQuery,
-            };
-          }
-        
-          const fetched = await fetchTasksByStatus(
-            label,
-            {
-              ...filtered,
-              limit: state.limit,
-              offset,
-            },
-            reset
-          );
-        
-          newTasksByStatus[key] = reset
-            ? fetched
-            : [...(state.tasksByStatus[key] || []), ...fetched];
-        
-          dispatch({
-            type: "SET_PAGE_BY_STATUS",
-            payload: { status: key, page: page + 1 },
-          });
-        
-          dispatch({
-            type: "SET_HAS_MORE_BY_STATUS",
-            payload: { status: key, hasMore: fetched.length > 0 },
-          });
-        }        
+        }
+
+        const fetched = await fetchTasksByStatus(
+          label,
+          {
+            ...filtered,
+            limit: state.limit,
+            offset,
+          },
+          reset
+        );
+
+        newTasksByStatus[key] = reset
+          ? fetched
+          : [...(state.tasksByStatus[key] || []), ...fetched];
+
+        dispatch({
+          type: "SET_PAGE_BY_STATUS",
+          payload: { status: key, page: page + 1 },
+        });
+
+        dispatch({
+          type: "SET_HAS_MORE_BY_STATUS",
+          payload: { status: key, hasMore: fetched.length > 0 },
+        });
+      }
 
       setTasksByStatus(newTasksByStatus);
       setLoading(false);
+      if (reset) {
+        setFiltersChanged(false);
+      }
     },
     [state]
   );
@@ -276,9 +280,7 @@ export function useTasks() {
 
   const findColumnOfTask = (taskId: string): StatusKey | null => {
     for (const key of statusKeyArray) {
-      if (
-        state.tasksByStatus[key].some((task) => task.id.toString() === taskId)
-      ) {
+      if (state.tasksByStatus[key].some((task) => task.id.toString() === taskId)) {
         return key;
       }
     }
@@ -326,8 +328,10 @@ export function useTasks() {
   }, [state]);
 
   const debouncedRealtimeUpdate = debounce(() => {
-    loadMoreTasks(true);
-    fetchStatusWiseCounts();
+    if (state.filtersChanged) {
+      loadMoreTasks(true);
+      fetchStatusWiseCounts();
+    }
   }, 300);
 
   useEffect(() => {
@@ -350,7 +354,22 @@ export function useTasks() {
       supabase.removeChannel(channel);
       debouncedRealtimeUpdate.cancel();
     };
-  }, []);
+  }, [state.filtersChanged]);
+
+  useEffect(() => {
+    if (state.filtersChanged) {
+      resetPagination();
+      loadMoreTasks(true);
+      fetchStatusWiseCounts();
+    }
+  }, [
+    state.statusFilter,
+    state.categoryFilter,
+    state.subcategoryFilter,
+    state.dateRange,
+    state.searchQuery,
+    state.limit,
+  ]);
 
   return {
     tasksByStatus: state.tasksByStatus,

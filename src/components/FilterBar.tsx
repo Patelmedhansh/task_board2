@@ -1,8 +1,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { DateRange } from "react-date-range";
-import { useState, useEffect } from "react";
-import { useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
@@ -11,7 +10,7 @@ type Setter<T> = (val: T) => void;
 interface FilterBarProps {
   statusFilter?: string | null;
   setStatusFilter?: Setter<string | null>;
-  categoryFilter: string | null;
+  categoryFilter: string;
   setCategoryFilter: Setter<string | null>;
   subcategoryFilter: string | null;
   setSubcategoryFilter: Setter<string | null>;
@@ -44,6 +43,7 @@ export default function FilterBar({
   const calendarRef = useRef<HTMLDivElement>(null);
   const [searchInput, setSearchInput] = useState(searchQuery ?? "");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isFirstSelection, setIsFirstSelection] = useState(true);
   const [range, setRange] = useState<any[]>([
     {
       startDate: dateRange.from ? new Date(dateRange.from) : new Date(),
@@ -74,15 +74,13 @@ export default function FilterBar({
     }
   }, [categoryFilter, subcategoryMap, subcategoryFilter]);
 
-  
   useEffect(() => {
     const delay = setTimeout(() => {
       setSearchQuery(searchInput.trim() || null);
     }, 500);
-  
+
     return () => clearTimeout(delay);
   }, [searchInput, setSearchQuery]);
-  
 
   return (
     <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-4 mb-6">
@@ -167,25 +165,34 @@ export default function FilterBar({
                   key: "selection",
                 },
               ]);
+              setIsFirstSelection(true);
             }}
           >
             &times;
           </button>
         )}
         {calendarOpen && (
-          <div ref={calendarRef} className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200">
+          <div
+            ref={calendarRef}
+            className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200"
+          >
             <DateRange
               ranges={range}
               onChange={(item) => {
                 const start = item.selection.startDate;
                 const end = item.selection.endDate;
-              
-                if (start && end && start.getTime() !== end.getTime()) {
-                  setRange([item.selection]);
-                  setDateRange({ from: start.toISOString(), to: end.toISOString() });
-                  setCalendarOpen(false);
+                setRange([item.selection]);
+
+                if (isFirstSelection) {
+                  setIsFirstSelection(false);
                 } else {
-                  setRange([item.selection]);
+                  if (start && end) {
+                    const from = start.toISOString();
+                    const to = end.toISOString();
+                    setDateRange({ from, to });
+                    setCalendarOpen(false);
+                    setIsFirstSelection(true);
+                  }
                 }
               }}
               moveRangeOnFirstSelection={false}
