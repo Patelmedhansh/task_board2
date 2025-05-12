@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -7,6 +8,7 @@ import NoTask from "../assets/img/notask.png";
 import { DraggableCard } from "./DraggableCard";
 import { Task } from "../types/tasks";
 import { StatusKey } from "../hooks/useTasks";
+
 interface DroppableColumnProps {
   columnId: StatusKey;
   title: string;
@@ -17,6 +19,7 @@ interface DroppableColumnProps {
   isDragging?: boolean;
   totalCount: number;
 }
+
 export function DroppableColumn({
   columnId,
   title,
@@ -26,6 +29,10 @@ export function DroppableColumn({
   totalCount,
 }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
+
+  // Create unique identifiers for sortable items using both columnId and task.id
+  const sortableItems = tasks.map((task) => task.id.toString());
+
   return (
     <div className="bg-white rounded-lg shadow px-4 flex flex-col w-full">
       <div className="sticky top-[0px] bg-white p-2 font-semibold flex items-center">
@@ -38,11 +45,12 @@ export function DroppableColumn({
               : "bg-green-500"
           }`}
         />
-        {title} ({tasks.length} of {totalCount})
+        {title} ({Math.min(tasks.length, totalCount)} of {totalCount})
       </div>
+
       <div ref={setNodeRef} className="mt-2 space-y-3">
         <SortableContext
-          items={tasks.map((task) => task.id.toString())}
+          items={sortableItems}
           strategy={verticalListSortingStrategy}
         >
           {tasks.length === 0 ? (
@@ -51,9 +59,9 @@ export function DroppableColumn({
               <span>No Task</span>
             </div>
           ) : (
-            tasks.map((task) => (
+            tasks.slice(0, totalCount).map((task) => (
               <DraggableCard
-                key={task.id}
+                key={task.id.toString()}
                 task={task}
                 setActiveTask={setActiveTask}
                 onClick={() => onCardClick?.(task.id)}

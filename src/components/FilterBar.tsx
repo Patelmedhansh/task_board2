@@ -74,7 +74,7 @@ export default function FilterBar({
     if (dateRange.from && dateRange.to) {
       const localStart = new Date(dateRange.from);
       const localEnd = new Date(dateRange.to);
-  
+
       setRange([
         {
           startDate: new Date(
@@ -91,8 +91,8 @@ export default function FilterBar({
         },
       ]);
     }
-  }, [dateRange]);  
-  
+  }, [dateRange]);
+
   useEffect(() => {
     if (
       categoryFilter &&
@@ -221,65 +221,50 @@ export default function FilterBar({
           >
             <DateRange
               ranges={range}
-              onChange={(item) => {
-                const start = item.selection.startDate;
-                const end = item.selection.endDate;
-                if (start && end) {
-                  if (
-                    lastClickedDate &&
-                    start.getTime() === end.getTime() &&
-                    start.getTime() === lastClickedDate.getTime()
-                  ) {
-                    const dateUTC = new Date(
-                      Date.UTC(
-                        start.getFullYear(),
-                        start.getMonth(),
-                        start.getDate(),
-                        23,
-                        59,
-                        59
-                      )
-                    );
-                    setDateRange({
-                      from: new Date(
-                        Date.UTC(
-                          start.getFullYear(),
-                          start.getMonth(),
-                          start.getDate()
-                        )
-                      ).toISOString(),
-                      to: dateUTC.toISOString(),
-                    });
-                    setCalendarOpen(false);
-                    setLastClickedDate(null);
-                  } else if (start.getTime() !== end.getTime()) {
-                    const startUTC = new Date(
-                      Date.UTC(
-                        start.getFullYear(),
-                        start.getMonth(),
-                        start.getDate()
-                      )
-                    );
-                    const endUTC = new Date(
-                      Date.UTC(
-                        end.getFullYear(),
-                        end.getMonth(),
-                        end.getDate(),
-                        23,
-                        59,
-                        59
-                      )
-                    );
-                    setDateRange({
-                      from: startUTC.toISOString(),
-                      to: endUTC.toISOString(),
-                    });
-                    setCalendarOpen(false);
-                    setLastClickedDate(null);
-                  } else {
-                    setLastClickedDate(start);
-                    setRange([item.selection]);
-                  }
+              onChange={({ selection }) => {
+                const start = selection.startDate;
+                const end = selection.endDate;
+                if (!start || !end) return;
+
+                const isSameDay = start.getTime() === end.getTime();
+                const isRepeatClick =
+                  lastClickedDate?.getTime() === start.getTime();
+
+                const startUTC = new Date(
+                  Date.UTC(
+                    start.getFullYear(),
+                    start.getMonth(),
+                    start.getDate()
+                  )
+                );
+                const endUTC = new Date(
+                  Date.UTC(
+                    end.getFullYear(),
+                    end.getMonth(),
+                    end.getDate(),
+                    23,
+                    59,
+                    59
+                  )
+                );
+
+                if (isSameDay && isRepeatClick) {
+                  setDateRange({
+                    from: startUTC.toISOString(),
+                    to: endUTC.toISOString(),
+                  });
+                  setCalendarOpen(false);
+                  setLastClickedDate(null);
+                } else if (!isSameDay) {
+                  setDateRange({
+                    from: startUTC.toISOString(),
+                    to: endUTC.toISOString(),
+                  });
+                  setCalendarOpen(false);
+                  setLastClickedDate(null);
+                } else {
+                  setLastClickedDate(start);
+                  setRange([{ ...selection }]);
                 }
               }}
               moveRangeOnFirstSelection={false}
