@@ -177,9 +177,22 @@ export function useTasks() {
 
   const loadMoreTasks = useCallback(
     async (reset = false, specificStatus?: StatusKey) => {
-      setLoading(true);
+      if (state.loading) return;
 
       const statuses = specificStatus ? [specificStatus] : statusKeyArray;
+      let shouldLoadMore = false;
+
+      for (const key of statuses) {
+        if (state.hasMoreByStatus[key] && 
+            state.tasksByStatus[key].length < state.totalCountByStatus[key]) {
+          shouldLoadMore = true;
+          break;
+        }
+      }
+
+      if (!shouldLoadMore && !reset) return;
+
+      setLoading(true);
 
       const newTasksByStatus: Record<StatusKey, Task[]> = reset
         ? { "to-do": [], "in-progress": [], done: [] }
@@ -190,12 +203,17 @@ export function useTasks() {
         const page = reset ? 0 : state.pageByStatus[key];
         const offset = page * (state.limit ?? pageSize);
 
-        let filtered = {
+        let filtered: {
+          categoryFilter: string | null;
+          subcategoryFilter: string | null;
+          dateRange: { from: string | null; to: string | null };
+          searchQuery: string | null;
+        } = {
           categoryFilter: null,
           subcategoryFilter: null,
           dateRange: { from: null, to: null },
           searchQuery: null,
-        };
+        };        
 
         if (!state.statusFilter || state.statusFilter === label) {
           filtered = {
@@ -227,7 +245,11 @@ export function useTasks() {
 
         dispatch({
           type: "SET_HAS_MORE_BY_STATUS",
-          payload: { status: key, hasMore: fetched.length > 0 },
+          payload: { 
+            status: key, 
+            hasMore: fetched.length > 0 && 
+                     newTasksByStatus[key].length < state.totalCountByStatus[key]
+          },
         });
       }
 

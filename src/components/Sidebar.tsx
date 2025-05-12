@@ -2,14 +2,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTachometerAlt,
   faTrashAlt,
-  faUser,
   faRightFromBracket,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
-import Logo from "../assets/Logo.png";
-import SmallLogo from "../assets/image.png";
-import { useState } from "react";
+import { Dispatch, SetStateAction } from "react";
+import Logo from "../assets/img/Logo.png";
+import SmallLogo from "../assets/img/image.png";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -24,7 +23,6 @@ export default function Sidebar({
   handleLogout,
   setSidebarOpen,
 }: SidebarProps) {
-  const [showLogout, setShowLogout] = useState(false);
   return (
     <aside
       className={`bg-white shadow-lg h-full fixed top-0 left-0 z-50 transition-all duration-300
@@ -59,7 +57,7 @@ export default function Sidebar({
             </div>
           </div>
 
-          <div className="flex items-center justify-between w-full px-4 pt-4 hidden md:flex">
+          <div className="flex items-center justify-between w-full px-4 pt-4 md:flex">
             <img
               src={sidebarOpen ? Logo : SmallLogo}
               alt="Logo"

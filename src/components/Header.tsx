@@ -6,7 +6,7 @@ import {
   faCaretDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { Dispatch, SetStateAction } from "react";
-import Logo from "../assets/Logo.png";
+import Logo from "../assets/img/Logo.png";
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -30,19 +30,16 @@ export default function Header({
       className={`flex items-center justify-between bg-white px-4 py-2 fixed top-0 right-0 z-30 h-14
   ${sidebarOpen ? "md:left-64" : "md:left-16"} left-0`}
     >
-      {/* Hamburger */}
       <div className="flex items-center gap-4">
         <button onClick={() => setSidebarOpen(!sidebarOpen)}>
           <FontAwesomeIcon icon={faBars} size="lg" />
         </button>
       </div>
 
-      {/* Centered logo on mobile */}
       <div className="absolute left-1/2 transform -translate-x-1/2 md:hidden">
         <img src={Logo} alt="Logo" className="h-6" />
       </div>
 
-      {/* User profile + dropdown on desktop */}
       <div className="relative hidden md:block">
         <div
           className="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-gray-100"

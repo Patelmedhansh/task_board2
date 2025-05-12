@@ -1,8 +1,8 @@
 import { useState, FormEvent } from "react";
 import { supabase } from "../supabaseClient";
 import "../App.css";
-import Logo from "../assets/Logo.png";
-import Frame from "../assets/Frame.png";
+import Logo from "../assets/img/Logo.png";
+import Frame from "../assets/img/Frame.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-hot-toast";
@@ -19,7 +19,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });

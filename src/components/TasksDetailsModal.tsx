@@ -30,10 +30,6 @@ export default function TaskDetailsModal({
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState<string>("");
-  // const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(
-  //   null
-  // );
-  // const [replyContent, setReplyContent] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -247,7 +243,6 @@ export default function TaskDetailsModal({
   const handleStartEdit = (comment: Comment) => {
     setEditingCommentId(comment.id);
     setEditingContent(comment.content);
-    // setReplyingToCommentId(null);
   };
 
   const handleSaveEdit = async (id: string) => {
@@ -267,38 +262,6 @@ export default function TaskDetailsModal({
       toast.error("Failed to update comment");
     }
   };
-
-  // const handleStartReply = (id: string) => {
-  //   setReplyingToCommentId(id);
-  //   setReplyContent("");
-  //   setEditingCommentId(null);
-  // };
-
-  // const handleReply = async (parent_id: string) => {
-  //   setLoading(true);
-  //   const {
-  //     data: { user },
-  //   } = await supabase.auth.getUser();
-
-  //   const { error } = await supabase.from("comments").insert([
-  //     {
-  //       task_id: taskId,
-  //       content: replyContent,
-  //       user_email: user?.email || "Anonymous",
-  //       parent_id,
-  //     },
-  //   ]);
-
-  //   if (!error) {
-  //     toast.success("Reply added!");
-  //     setReplyingToCommentId(null);
-  //     setReplyContent("");
-  //     fetchComments();
-  //   } else {
-  //     toast.error("Failed to add reply");
-  //   }
-  //   setLoading(false);
-  // };
 
   const renderComments = (parentId: string | null = null) =>
     comments
@@ -342,12 +305,6 @@ export default function TaskDetailsModal({
 
               {currentUserId === c.user_id && (
                 <div className="mt-1 flex gap-2 text-xs">
-                  {/* <button
-                  className="hover:underline"
-                  onClick={() => handleStartReply(c.id)}
-                >
-                  Reply
-                </button> */}
                   <button
                     className="hover:underline"
                     onClick={() => handleStartEdit(c)}
@@ -364,33 +321,6 @@ export default function TaskDetailsModal({
               )}
             </>
           )}
-
-          {/* {replyingToCommentId === c.id && (
-            <div className="mt-2">
-              <textarea
-                className="w-full border rounded p-2 text-sm mb-1"
-                value={replyContent}
-                placeholder="Write a reply..."
-                onChange={(e) => setReplyContent(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-xs"
-                  onClick={() => handleReply(c.id)}
-                  disabled={replyContent.trim() === ""}
-                >
-                  Reply
-                </button>
-                <button
-                  className="text-xs text-gray-600 hover:text-black"
-                  onClick={() => setReplyingToCommentId(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )} */}
-
           <div className="pl-6">{renderComments(c.id)}</div>
         </div>
       ));

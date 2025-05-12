@@ -33,7 +33,8 @@ export default function Dashboard() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [activeMobileTab, setActiveMobileTab] = useState("to-do");
+  const [activeMobileTab, setActiveMobileTab] = useState<StatusKey>("to-do");
+
 
   const {
     tasksByStatus,
@@ -107,6 +108,7 @@ export default function Dashboard() {
     limit,
   ]);
 
+  //desktop
   useEffect(() => {
     if (window.innerWidth < 768) return;
   
@@ -125,7 +127,7 @@ export default function Dashboard() {
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
   }, [loading, loadMoreTasks]);
   
-
+  //mobile (per column)
   useEffect(() => {
     if (window.innerWidth >= 768) return;
 
@@ -155,6 +157,7 @@ export default function Dashboard() {
     loadMoreTasks,
   ]);
 
+  //scroll reset on tab change
   useEffect(() => {
     if (window.innerWidth < 768 && scrollRef.current) {
       scrollRef.current.scrollTop = 0;

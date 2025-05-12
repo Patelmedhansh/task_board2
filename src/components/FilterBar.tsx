@@ -1,7 +1,8 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { DateRange } from "react-date-range";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useRef } from "react";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 
@@ -10,7 +11,7 @@ type Setter<T> = (val: T) => void;
 interface FilterBarProps {
   statusFilter?: string | null;
   setStatusFilter?: Setter<string | null>;
-  categoryFilter: string;
+  categoryFilter: string | null;
   setCategoryFilter: Setter<string | null>;
   subcategoryFilter: string | null;
   setSubcategoryFilter: Setter<string | null>;
@@ -43,7 +44,7 @@ export default function FilterBar({
   const calendarRef = useRef<HTMLDivElement>(null);
   const [searchInput, setSearchInput] = useState(searchQuery ?? "");
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [isFirstSelection, setIsFirstSelection] = useState(true);
+  const [lastClickedDate, setLastClickedDate] = useState<Date | null>(null);
   const [range, setRange] = useState<any[]>([
     {
       startDate: dateRange.from ? new Date(dateRange.from) : new Date(),
@@ -54,8 +55,12 @@ export default function FilterBar({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+      if (
+        calendarRef.current &&
+        !calendarRef.current.contains(event.target as Node)
+      ) {
         setCalendarOpen(false);
+        setLastClickedDate(null);
       }
     }
 
@@ -65,6 +70,29 @@ export default function FilterBar({
     };
   }, []);
 
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      const localStart = new Date(dateRange.from);
+      const localEnd = new Date(dateRange.to);
+  
+      setRange([
+        {
+          startDate: new Date(
+            localStart.getUTCFullYear(),
+            localStart.getUTCMonth(),
+            localStart.getUTCDate()
+          ),
+          endDate: new Date(
+            localEnd.getUTCFullYear(),
+            localEnd.getUTCMonth(),
+            localEnd.getUTCDate()
+          ),
+          key: "selection",
+        },
+      ]);
+    }
+  }, [dateRange]);  
+  
   useEffect(() => {
     if (
       categoryFilter &&
@@ -81,6 +109,16 @@ export default function FilterBar({
 
     return () => clearTimeout(delay);
   }, [searchInput, setSearchQuery]);
+
+  const formatDateDisplay = (date: Date | null) => {
+    if (!date) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+  };
 
   return (
     <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 md:gap-4 mb-6">
@@ -101,7 +139,7 @@ export default function FilterBar({
         typeof setStatusFilter !== "undefined" && (
           <select
             onChange={(e) => setStatusFilter(e.target.value || null)}
-            className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+            className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm bg-white"
             value={statusFilter ?? ""}
           >
             <option value="">Status</option>
@@ -113,7 +151,7 @@ export default function FilterBar({
 
       <select
         onChange={(e) => setCategoryFilter(e.target.value || null)}
-        className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
+        className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm bg-white"
         value={categoryFilter ?? ""}
       >
         <option value="">Category</option>
@@ -127,7 +165,7 @@ export default function FilterBar({
       {categoryFilter && (
         <select
           onChange={(e) => setSubcategoryFilter(e.target.value || null)}
-          className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm w-40 bg-white"
+          className="w-full md:w-40 border border-gray-300 px-3 py-2 rounded text-sm bg-white"
           value={subcategoryFilter ?? ""}
         >
           <option value="">Subcategory</option>
@@ -143,12 +181,17 @@ export default function FilterBar({
         <button
           type="button"
           onClick={() => setCalendarOpen((open) => !open)}
-          className="w-full md:w-48 border border-gray-300 px-3 py-2 rounded text-sm w-48 text-left bg-white"
+          className="w-full md:w-52 border border-gray-300 px-3 py-2 rounded text-sm text-left bg-white truncate"
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
         >
           {dateRange.from && dateRange.to
-            ? `${new Date(dateRange.from).toLocaleDateString()} - ${new Date(
-                dateRange.to
-              ).toLocaleDateString()}`
+            ? `${formatDateDisplay(
+                new Date(dateRange.from)
+              )} - ${formatDateDisplay(new Date(dateRange.to))}`
             : "Date Range"}
         </button>
         {dateRange.from && dateRange.to && (
@@ -165,7 +208,7 @@ export default function FilterBar({
                   key: "selection",
                 },
               ]);
-              setIsFirstSelection(true);
+              setLastClickedDate(null);
             }}
           >
             &times;
@@ -174,24 +217,68 @@ export default function FilterBar({
         {calendarOpen && (
           <div
             ref={calendarRef}
-            className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200"
+            className="absolute left-0 top-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 z-50"
           >
             <DateRange
               ranges={range}
               onChange={(item) => {
                 const start = item.selection.startDate;
                 const end = item.selection.endDate;
-                setRange([item.selection]);
-
-                if (isFirstSelection) {
-                  setIsFirstSelection(false);
-                } else {
-                  if (start && end) {
-                    const from = start.toISOString();
-                    const to = end.toISOString();
-                    setDateRange({ from, to });
+                if (start && end) {
+                  if (
+                    lastClickedDate &&
+                    start.getTime() === end.getTime() &&
+                    start.getTime() === lastClickedDate.getTime()
+                  ) {
+                    const dateUTC = new Date(
+                      Date.UTC(
+                        start.getFullYear(),
+                        start.getMonth(),
+                        start.getDate(),
+                        23,
+                        59,
+                        59
+                      )
+                    );
+                    setDateRange({
+                      from: new Date(
+                        Date.UTC(
+                          start.getFullYear(),
+                          start.getMonth(),
+                          start.getDate()
+                        )
+                      ).toISOString(),
+                      to: dateUTC.toISOString(),
+                    });
                     setCalendarOpen(false);
-                    setIsFirstSelection(true);
+                    setLastClickedDate(null);
+                  } else if (start.getTime() !== end.getTime()) {
+                    const startUTC = new Date(
+                      Date.UTC(
+                        start.getFullYear(),
+                        start.getMonth(),
+                        start.getDate()
+                      )
+                    );
+                    const endUTC = new Date(
+                      Date.UTC(
+                        end.getFullYear(),
+                        end.getMonth(),
+                        end.getDate(),
+                        23,
+                        59,
+                        59
+                      )
+                    );
+                    setDateRange({
+                      from: startUTC.toISOString(),
+                      to: endUTC.toISOString(),
+                    });
+                    setCalendarOpen(false);
+                    setLastClickedDate(null);
+                  } else {
+                    setLastClickedDate(start);
+                    setRange([item.selection]);
                   }
                 }
               }}
@@ -204,10 +291,9 @@ export default function FilterBar({
           </div>
         )}
       </div>
-
       <select
         onChange={(e) => setLimit(Number(e.target.value) || null)}
-        className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm w-32 bg-white"
+        className="w-full md:w-32 border border-gray-300 px-3 py-2 rounded text-sm bg-white"
         value={limit ?? ""}
       >
         <option value="">Limit</option>
