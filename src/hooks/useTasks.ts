@@ -1,7 +1,6 @@
-import { useReducer, useCallback, useEffect } from "react";
+import { useReducer, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
-import debounce from "lodash.debounce";
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -26,16 +25,25 @@ type Action =
   | { type: "SET_STATUS_FILTER"; payload: string | null }
   | { type: "SET_CATEGORY_FILTER"; payload: string | null }
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
-  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
+  | {
+      type: "SET_DATE_RANGE";
+      payload: { from: string | null; to: string | null };
+    }
   | { type: "SET_LIMIT"; payload: number | null }
   | { type: "SET_PAGE_BY_STATUS"; payload: { status: StatusKey; page: number } }
-  | { type: "SET_HAS_MORE_BY_STATUS"; payload: { status: StatusKey; hasMore: boolean } }
+  | {
+      type: "SET_HAS_MORE_BY_STATUS";
+      payload: { status: StatusKey; hasMore: boolean };
+    }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_SEARCH_QUERY"; payload: string | null }
   | { type: "SET_TOTAL_COUNT_BY_STATUS"; payload: Record<StatusKey, number> }
   | { type: "RESET_PAGINATION" }
   | { type: "SET_FILTERS_CHANGED"; payload: boolean }
-  | { type: "UPDATE_TASKS_FOR_STATUS"; payload: { status: StatusKey; tasks: Task[] } };
+  | {
+      type: "UPDATE_TASKS_FOR_STATUS";
+      payload: { status: StatusKey; tasks: Task[] };
+    };
 
 const initialState: State = {
   tasksByStatus: {
@@ -85,7 +93,11 @@ function reducer(state: State, action: Action): State {
     case "SET_CATEGORY_FILTER":
       return { ...state, categoryFilter: action.payload, filtersChanged: true };
     case "SET_SUBCATEGORY_FILTER":
-      return { ...state, subcategoryFilter: action.payload, filtersChanged: true };
+      return {
+        ...state,
+        subcategoryFilter: action.payload,
+        filtersChanged: true,
+      };
     case "SET_DATE_RANGE":
       return { ...state, dateRange: action.payload, filtersChanged: true };
     case "SET_LIMIT":
@@ -133,78 +145,168 @@ const PAGE_SIZE = 10;
 
 export function useTasks() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  const setTasksByStatus = (val: Record<StatusKey, Task[]>) =>
+  const setTasksByStatus = useCallback((val: Record<StatusKey, Task[]>) => {
     dispatch({ type: "SET_TASKS_BY_STATUS", payload: val });
-  const setStatusFilter = (val: string | null) =>
+  }, []);
+
+  const setStatusFilter = useCallback((val: string | null) => {
     dispatch({ type: "SET_STATUS_FILTER", payload: val });
-  const setCategoryFilter = (val: string | null) =>
+  }, []);
+
+  const setCategoryFilter = useCallback((val: string | null) => {
     dispatch({ type: "SET_CATEGORY_FILTER", payload: val });
-  const setSubcategoryFilter = (val: string | null) =>
+  }, []);
+
+  const setSubcategoryFilter = useCallback((val: string | null) => {
     dispatch({ type: "SET_SUBCATEGORY_FILTER", payload: val });
-  const setDateRange = (val: { from: string | null; to: string | null }) =>
-    dispatch({ type: "SET_DATE_RANGE", payload: val });
-  const setLimit = (val: number | null) =>
+  }, []);
+
+  const setDateRange = useCallback(
+    (val: { from: string | null; to: string | null }) => {
+      dispatch({ type: "SET_DATE_RANGE", payload: val });
+    },
+    []
+  );
+
+  const setLimit = useCallback((val: number | null) => {
     dispatch({ type: "SET_LIMIT", payload: val });
-  const setLoading = (val: boolean) =>
+  }, []);
+
+  const setLoading = useCallback((val: boolean) => {
     dispatch({ type: "SET_LOADING", payload: val });
-  const setSearchQuery = (val: string | null) =>
+  }, []);
+
+  const setSearchQuery = useCallback((val: string | null) => {
     dispatch({ type: "SET_SEARCH_QUERY", payload: val });
-  const resetPagination = () => dispatch({ type: "RESET_PAGINATION" });
-  const setTotalCountByStatus = (val: Record<StatusKey, number>) =>
-    dispatch({ type: "SET_TOTAL_COUNT_BY_STATUS", payload: val });
-  const setFiltersChanged = (val: boolean) =>
+  }, []);
+
+  const resetPagination = useCallback(() => {
+    dispatch({ type: "RESET_PAGINATION" });
+  }, []);
+
+  const setTotalCountByStatus = useCallback(
+    (val: Record<StatusKey, number>) => {
+      dispatch({ type: "SET_TOTAL_COUNT_BY_STATUS", payload: val });
+    },
+    []
+  );
+
+  const setFiltersChanged = useCallback((val: boolean) => {
     dispatch({ type: "SET_FILTERS_CHANGED", payload: val });
+  }, []);
 
-  const fetchTasksByStatus = async (
-    status: string,
-    filters: {
-      categoryFilter?: string | null;
-      subcategoryFilter?: string | null;
-      dateRange?: { from: string | null; to: string | null };
-      searchQuery?: string | null;
-      limit?: number | null;
-      offset?: number;
-    }
-  ): Promise<Task[]> => {
-    try {
-      const offset = filters.offset ?? 0;
-      const effectiveLimit = filters.limit ?? PAGE_SIZE;
+  const fetchTasksByStatus = useCallback(
+    async (
+      status: string,
+      filters: {
+        categoryFilter?: string | null;
+        subcategoryFilter?: string | null;
+        dateRange?: { from: string | null; to: string | null };
+        searchQuery?: string | null;
+        limit?: number | null;
+        offset?: number;
+      }
+    ): Promise<Task[]> => {
+      try {
+        const offset = filters.offset ?? 0;
+        const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
-      const { data, error } = await supabase.rpc("get_tasks_by_status", {
-        task_status: status,
-        category_filter: filters.categoryFilter,
-        subcategory_filter: filters.subcategoryFilter,
-        date_from: filters.dateRange?.from,
-        date_to: filters.dateRange?.to,
-        limit_count: effectiveLimit,
-        offset_count: offset,
-        search_query: filters.searchQuery,
-      });
+        const { data, error } = await supabase.rpc("get_tasks_by_status", {
+          task_status: status,
+          category_filter: filters.categoryFilter,
+          subcategory_filter: filters.subcategoryFilter,
+          date_from: filters.dateRange?.from,
+          date_to: filters.dateRange?.to,
+          limit_count: effectiveLimit,
+          offset_count: offset,
+          search_query: filters.searchQuery,
+        });
 
-      if (error) {
-        console.error("Error fetching tasks:", error);
+        if (error) {
+          console.error("Error fetching tasks:", error);
+          return [];
+        }
+
+        return data as Task[];
+      } catch (error) {
+        console.error("Error in fetchTasksByStatus:", error);
         return [];
       }
+    },
+    []
+  );
 
-      return data as Task[];
+  const fetchStatusWiseCounts = useCallback(async () => {
+    const statusLabels: Record<StatusKey, string> = {
+      "to-do": "To Do",
+      "in-progress": "In Progress",
+      done: "Done",
+    };
+
+    const counts: Record<StatusKey, number> = {
+      "to-do": 0,
+      "in-progress": 0,
+      done: 0,
+    };
+
+    try {
+      const countPromises = statusKeyArray.map(async (key) => {
+        let query = supabase
+          .from("projects")
+          .select("*", { count: "exact", head: true })
+          .eq("status", statusLabels[key]);
+
+        const currentState = stateRef.current;
+        if (
+          !currentState.statusFilter ||
+          currentState.statusFilter === statusLabels[key]
+        ) {
+          if (currentState.categoryFilter)
+            query = query.eq("category", currentState.categoryFilter);
+          if (currentState.subcategoryFilter)
+            query = query.eq("subcategory", currentState.subcategoryFilter);
+          if (currentState.dateRange?.from && currentState.dateRange?.to) {
+            query = query
+              .gte("created_at", currentState.dateRange.from)
+              .lte("created_at", currentState.dateRange.to);
+          }
+          if (currentState.searchQuery)
+            query = query.ilike("title", `%${currentState.searchQuery}%`);
+        }
+
+        const { count } = await query;
+        return { key, count };
+      });
+
+      const results = await Promise.all(countPromises);
+      results.forEach(({ key, count }) => {
+        if (typeof count === "number") counts[key] = count;
+      });
+
+      setTotalCountByStatus(counts);
     } catch (error) {
-      console.error("Error in fetchTasksByStatus:", error);
-      return [];
+      console.error("Error in fetchStatusWiseCounts:", error);
     }
-  };
+  }, [setTotalCountByStatus]);
 
   const loadMoreTasks = useCallback(
     async (reset = false, specificStatus?: StatusKey) => {
-      if (state.loading && !reset) return;
+      const currentState = stateRef.current;
+      if (currentState.loading && !reset) return;
 
       const statuses = specificStatus ? [specificStatus] : statusKeyArray;
       let shouldLoadMore = false;
 
       for (const key of statuses) {
-        const currentCount = state.tasksByStatus[key].length;
-        const totalCount = state.totalCountByStatus[key];
-        if (reset || (currentCount < totalCount && state.hasMoreByStatus[key])) {
+        const currentCount = currentState.tasksByStatus[key].length;
+        const totalCount = currentState.totalCountByStatus[key];
+        if (
+          reset ||
+          (currentCount < totalCount && currentState.hasMoreByStatus[key])
+        ) {
           shouldLoadMore = true;
           break;
         }
@@ -217,22 +319,30 @@ export function useTasks() {
       try {
         const fetchPromises = statuses.map(async (key) => {
           const label = statusKeyToStatusLabel(key);
-          const page = reset ? 0 : state.pageByStatus[key];
+          const page = reset ? 0 : currentState.pageByStatus[key];
           const offset = page * PAGE_SIZE;
 
-          let filtered = {
+          let filtered: {
+            categoryFilter: string | null;
+            subcategoryFilter: string | null;
+            dateRange: { from: string | null; to: string | null };
+            searchQuery: string | null;
+          } = {
             categoryFilter: null,
             subcategoryFilter: null,
             dateRange: { from: null, to: null },
             searchQuery: null,
           };
 
-          if (!state.statusFilter || state.statusFilter === label) {
+          if (
+            !currentState.statusFilter ||
+            currentState.statusFilter === label
+          ) {
             filtered = {
-              categoryFilter: state.categoryFilter,
-              subcategoryFilter: state.subcategoryFilter,
-              dateRange: state.dateRange,
-              searchQuery: state.searchQuery,
+              categoryFilter: currentState.categoryFilter,
+              subcategoryFilter: currentState.subcategoryFilter,
+              dateRange: currentState.dateRange,
+              searchQuery: currentState.searchQuery,
             };
           }
 
@@ -248,7 +358,18 @@ export function useTasks() {
 
           dispatch({
             type: "UPDATE_TASKS_FOR_STATUS",
-            payload: { status: key, tasks: [...state.tasksByStatus[key], ...tasks] },
+            payload: {
+              status: key,
+              tasks: [
+                ...currentState.tasksByStatus[key],
+                ...tasks.filter(
+                  (newTask) =>
+                    !currentState.tasksByStatus[key].some(
+                      (t) => t.id === newTask.id
+                    )
+                ),
+              ],
+            },
           });
 
           dispatch({
@@ -296,111 +417,72 @@ export function useTasks() {
         }
       }
     },
-    [state]
+    [fetchTasksByStatus, setLoading, setTasksByStatus, setFiltersChanged]
   );
 
-  const moveTask = async (
-    taskId: string,
-    sourceCol: StatusKey,
-    destCol: StatusKey,
-    destIndex: number
-  ) => {
-    const task = state.tasksByStatus[sourceCol].find(
-      (t) => t.id.toString() === taskId
-    );
-    if (!task) return;
-
-    const newSourceTasks = state.tasksByStatus[sourceCol].filter(
-      (t) => t.id.toString() !== taskId
-    );
-    const updatedTask: Task = {
-      ...task,
-      status: statusKeyToStatusLabel(destCol),
-    };
-    const newDestTasks = state.tasksByStatus[destCol].filter(
-      (t) => t.id.toString() !== taskId
-    );
-    newDestTasks.splice(destIndex, 0, updatedTask);
-
-    setTasksByStatus({
-      ...state.tasksByStatus,
-      [sourceCol]: newSourceTasks,
-      [destCol]: newDestTasks,
-    });
-
-    const { error } = await supabase.rpc("update_task_status", {
-      task_id: task.id,
-      new_status: updatedTask.status,
-    });
-
-    if (error) console.error("Failed to update task status:", error);
-    await fetchStatusWiseCounts();
-  };
-
-  const findColumnOfTask = (taskId: string): StatusKey | null => {
+  const findColumnOfTask = useCallback((taskId: string): StatusKey | null => {
+    const currentState = stateRef.current;
     for (const key of statusKeyArray) {
-      if (state.tasksByStatus[key].some((task) => task.id.toString() === taskId)) {
+      if (
+        currentState.tasksByStatus[key].some(
+          (task) => task.id.toString() === taskId
+        )
+      ) {
         return key;
       }
     }
     return null;
-  };
+  }, []);
 
-  const fetchStatusWiseCounts = useCallback(async () => {
-    const statusLabels: Record<StatusKey, string> = {
-      "to-do": "To Do",
-      "in-progress": "In Progress",
-      done: "Done",
-    };
+  const moveTask = useCallback(
+    async (
+      taskId: string,
+      sourceCol: StatusKey,
+      destCol: StatusKey,
+      destIndex: number
+    ) => {
+      const currentState = stateRef.current;
+      const task = currentState.tasksByStatus[sourceCol].find(
+        (t) => t.id.toString() === taskId
+      );
+      if (!task) return;
 
-    const counts: Record<StatusKey, number> = {
-      "to-do": 0,
-      "in-progress": 0,
-      done: 0,
-    };
+      const newSourceTasks = currentState.tasksByStatus[sourceCol].filter(
+        (t) => t.id.toString() !== taskId
+      );
+      const updatedTask: Task = {
+        ...task,
+        status: statusKeyToStatusLabel(destCol),
+      };
+      const newDestTasks = currentState.tasksByStatus[destCol].filter(
+        (t) => t.id.toString() !== taskId
+      );
+      newDestTasks.splice(destIndex, 0, updatedTask);
 
-    try {
-      const countPromises = statusKeyArray.map(async (key) => {
-        let query = supabase
-          .from("projects")
-          .select("*", { count: "exact", head: true })
-          .eq("status", statusLabels[key]);
-
-        if (!state.statusFilter || state.statusFilter === statusLabels[key]) {
-          if (state.categoryFilter)
-            query = query.eq("category", state.categoryFilter);
-          if (state.subcategoryFilter)
-            query = query.eq("subcategory", state.subcategoryFilter);
-          if (state.dateRange?.from && state.dateRange?.to) {
-            query = query
-              .gte("created_at", state.dateRange.from)
-              .lte("created_at", state.dateRange.to);
-          }
-          if (state.searchQuery)
-            query = query.ilike("title", `%${state.searchQuery}%`);
-        }
-
-        const { count } = await query;
-        return { key, count };
+      setTasksByStatus({
+        ...currentState.tasksByStatus,
+        [sourceCol]: newSourceTasks,
+        [destCol]: newDestTasks,
       });
 
-      const results = await Promise.all(countPromises);
-      results.forEach(({ key, count }) => {
-        if (typeof count === "number") counts[key] = count;
+      const { error } = await supabase.rpc("update_task_status", {
+        task_id: task.id,
+        new_status: updatedTask.status,
       });
 
-      setTotalCountByStatus(counts);
-    } catch (error) {
-      console.error("Error in fetchStatusWiseCounts:", error);
-    }
-  }, [state]);
+      if (error) console.error("Failed to update task status:", error);
+      await fetchStatusWiseCounts();
+    },
+    [setTasksByStatus, fetchStatusWiseCounts]
+  );
 
-  const debouncedRealtimeUpdate = debounce(() => {
-    if (state.filtersChanged) {
+  const handleRealtimeUpdate = useCallback(() => {
+    const currentState = stateRef.current;
+    if (!currentState.loading) {
       loadMoreTasks(true);
       fetchStatusWiseCounts();
     }
-  }, 300);
+  }, [loadMoreTasks, fetchStatusWiseCounts]);
 
   useEffect(() => {
     const channel = supabase
@@ -412,17 +494,14 @@ export function useTasks() {
           schema: "public",
           table: "projects",
         },
-        () => {
-          debouncedRealtimeUpdate();
-        }
+        handleRealtimeUpdate
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
-      debouncedRealtimeUpdate.cancel();
     };
-  }, [state.filtersChanged]);
+  }, [handleRealtimeUpdate]);
 
   useEffect(() => {
     if (state.filtersChanged) {
@@ -437,6 +516,9 @@ export function useTasks() {
     state.dateRange,
     state.searchQuery,
     state.limit,
+    resetPagination,
+    loadMoreTasks,
+    fetchStatusWiseCounts,
   ]);
 
   return {

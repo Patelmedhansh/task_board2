@@ -52,7 +52,6 @@ export default function Dashboard() {
     loadMoreTasks,
     loading,
     hasMoreByStatus,
-    pageByStatus,
     resetPagination,
     moveTask,
     findColumnOfTask,
