@@ -57,7 +57,7 @@ export default function Sidebar({
             </div>
           </div>
 
-          <div className="flex items-center justify-between w-full px-4 pt-4 md:flex">
+          <div className="hidden items-center justify-between w-full px-4 pt-4 md:flex">
             <img
               src={sidebarOpen ? Logo : SmallLogo}
               alt="Logo"

@@ -29,7 +29,6 @@ export function DroppableColumn({
 }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ id: columnId });
 
-  // Create unique identifiers for sortable items using both columnId and task.id
   const sortableItems = tasks.map((task) => task.id.toString());
 
   return (
