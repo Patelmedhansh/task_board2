@@ -112,47 +112,24 @@ export default function Discard() {
   };
 
   const fetchDiscardedTasks = async () => {
-    try {
-      setLoading(true);
+    setLoading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        window.location.href = '/login';
-        return;
-      }
+    let query = supabase.from("projects").select("*").eq("status", "Discarded");
 
-      let query = supabase
-        .from("projects")
-        .select("*")
-        .eq("status", "Discarded");
+    if (categoryFilter) query = query.eq("category", categoryFilter);
+    if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
+    if (dateRange.from) query = query.gte("created_at", dateRange.from);
+    if (dateRange.to) query = query.lte("created_at", dateRange.to);
+    if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
+    if (limit) query = query.limit(limit);
 
-      if (categoryFilter) query = query.eq("category", categoryFilter);
-      if (subcategoryFilter) query = query.eq("subcategory", subcategoryFilter);
-      if (dateRange.from) query = query.gte("created_at", dateRange.from);
-      if (dateRange.to) query = query.lte("created_at", dateRange.to);
-      if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
-      if (limit) query = query.limit(limit);
+    const { data, error } = await query;
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching discarded tasks:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        return;
-      }
-
-      if (data) {
-        setDiscardedTasks(data);
-      }
-    } catch (error) {
-      console.error("Error in fetchDiscardedTasks:", error);
-    } finally {
-      setLoading(false);
+    if (!error && data) {
+      setDiscardedTasks(data);
     }
+
+    setLoading(false);
   };
 
   const handleLogout = () => setShowLogoutConfirm(true);

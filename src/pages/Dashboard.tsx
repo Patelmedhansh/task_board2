@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<StatusKey>("to-do");
 
+
   const {
     tasksByStatus,
     setTasksByStatus,
@@ -88,24 +89,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     const init = async () => {
-      try {
-        setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          window.location.href = '/login';
-          return;
-        }
-        
-        resetPagination();
-        await loadMoreTasks(true);
-        await fetchStatusWiseCounts();
-        await getUser();
-      } catch (error) {
-        console.error('Dashboard initialization error:', error);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(true);
+      resetPagination();
+      await loadMoreTasks(true);
+      await fetchStatusWiseCounts();
+      await getUser();
+      setLoading(false);
     };
 
     init();
