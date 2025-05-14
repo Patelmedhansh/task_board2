@@ -1,6 +1,7 @@
 import { useReducer, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
+import debounce from "lodash.debounce";
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -147,6 +148,7 @@ export function useTasks() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const updateQueueRef = useRef<Set<string>>(new Set());
 
   const setTasksByStatus = useCallback((val: Record<StatusKey, Task[]>) => {
     dispatch({ type: "SET_TASKS_BY_STATUS", payload: val });
@@ -197,6 +199,21 @@ export function useTasks() {
   const setFiltersChanged = useCallback((val: boolean) => {
     dispatch({ type: "SET_FILTERS_CHANGED", payload: val });
   }, []);
+
+  const debouncedRealtimeUpdate = useCallback(
+    debounce(async () => {
+      if (updateQueueRef.current.size === 0) return;
+      
+      const taskIds = Array.from(updateQueueRef.current);
+      updateQueueRef.current.clear();
+
+      if (!stateRef.current.loading) {
+        await loadMoreTasks(true);
+        await fetchStatusWiseCounts();
+      }
+    }, 500),
+    []
+  );
 
   const fetchTasksByStatus = useCallback(
     async (
@@ -476,13 +493,13 @@ export function useTasks() {
     [setTasksByStatus, fetchStatusWiseCounts]
   );
 
-  const handleRealtimeUpdate = useCallback(() => {
-    const currentState = stateRef.current;
-    if (!currentState.loading) {
-      loadMoreTasks(true);
-      fetchStatusWiseCounts();
+  const handleRealtimeUpdate = useCallback((payload: any) => {
+    const taskId = (payload.new || payload.old)?.id;
+    if (taskId) {
+      updateQueueRef.current.add(taskId);
+      debouncedRealtimeUpdate();
     }
-  }, [loadMoreTasks, fetchStatusWiseCounts]);
+  }, [debouncedRealtimeUpdate]);
 
   useEffect(() => {
     const channel = supabase
@@ -500,8 +517,9 @@ export function useTasks() {
 
     return () => {
       supabase.removeChannel(channel);
+      debouncedRealtimeUpdate.cancel();
     };
-  }, [handleRealtimeUpdate]);
+  }, [handleRealtimeUpdate, debouncedRealtimeUpdate]);
 
   useEffect(() => {
     if (state.filtersChanged) {
