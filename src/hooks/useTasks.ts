@@ -243,13 +243,26 @@ export function useTasks() {
         });
 
         if (error) {
-          console.error("Error fetching tasks:", error);
+          console.error("Error fetching tasks:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+          });
+          return [];
+        }
+
+        if (!data) {
+          console.warn("No data returned from get_tasks_by_status");
           return [];
         }
 
         return data as Task[];
       } catch (error) {
-        console.error("Error in fetchTasksByStatus:", error);
+        console.error("Error in fetchTasksByStatus:", {
+          error,
+          status,
+          filters
+        });
         return [];
       }
     },
