@@ -140,7 +140,7 @@ export default function FilterBar({
     }).format(date);
   };
 
-  const filteredCountries = countryOptions.filter((country) =>
+  const filteredCountries = (countryOptions || []).filter((country) =>
     country.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -156,7 +156,7 @@ export default function FilterBar({
     if (countryOptions && selectedCountries.length === countryOptions.length) {
       setSelectedCountries([]);
     } else {
-      setSelectedCountries([...countryOptions]);
+      setSelectedCountries([...(countryOptions || [])]);
     }
   };
 
