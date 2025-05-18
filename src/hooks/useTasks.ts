@@ -329,6 +329,30 @@ export function useTasks() {
           }
           if (currentState.searchQuery)
             query = query.ilike("title", `%${currentState.searchQuery}%`);
+          
+          // Add country filter
+          if (currentState.selectedCountries.length > 0) {
+            query = query.in("prospect_location_country", currentState.selectedCountries);
+          }
+
+          // Add hourly budget type filter
+          if (currentState.hourlyBudgetType) {
+            if (currentState.hourlyBudgetType === "not provided") {
+              query = query.is("hourly_budget_type", null);
+            } else if (currentState.hourlyBudgetType === "fixed") {
+              query = query.eq("hourly_budget_type", "fixed");
+            } else {
+              query = query.eq("hourly_budget_type", currentState.hourlyBudgetType);
+            }
+          }
+
+          // Add price range filters
+          if (currentState.priceRange.from !== null) {
+            query = query.gte("price", currentState.priceRange.from);
+          }
+          if (currentState.priceRange.to !== null) {
+            query = query.lte("price", currentState.priceRange.to);
+          }
         }
 
         const { count } = await query;
@@ -562,7 +586,6 @@ export function useTasks() {
         },
         handleRealtimeUpdate
       )
-
       .subscribe();
 
     return () => {
@@ -584,11 +607,11 @@ export function useTasks() {
     state.searchQuery,
     state.limit,
     state.selectedCountries,
+    state.hourlyBudgetType,
+    state.priceRange,
     resetPagination,
     loadMoreTasks,
     fetchStatusWiseCounts,
-    state.hourlyBudgetType,
-    state.priceRange,
   ]);
 
   return {
@@ -617,6 +640,7 @@ export function useTasks() {
     totalCountByStatus: state.totalCountByStatus,
     statusKeyArray,
     setSelectedCountries,
+    selectedCountries: state.selectedCountries,
     hourlyBudgetType: state.hourlyBudgetType,
     setHourlyBudgetType,
     priceRange: state.priceRange,
