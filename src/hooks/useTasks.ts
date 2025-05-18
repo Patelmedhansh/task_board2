@@ -20,6 +20,7 @@ type State = {
   totalCountByStatus: Record<StatusKey, number>;
   filtersChanged: boolean;
   selectedCountries: string[];
+  countryOptions: string[];
   hourlyBudgetType: string | null;
   priceRange: { from: number | null; to: number | null };
 };
@@ -29,31 +30,20 @@ type Action =
   | { type: "SET_STATUS_FILTER"; payload: string | null }
   | { type: "SET_CATEGORY_FILTER"; payload: string | null }
   | { type: "SET_SUBCATEGORY_FILTER"; payload: string | null }
-  | {
-      type: "SET_DATE_RANGE";
-      payload: { from: string | null; to: string | null };
-    }
+  | { type: "SET_DATE_RANGE"; payload: { from: string | null; to: string | null } }
   | { type: "SET_LIMIT"; payload: number | null }
   | { type: "SET_PAGE_BY_STATUS"; payload: { status: StatusKey; page: number } }
-  | {
-      type: "SET_HAS_MORE_BY_STATUS";
-      payload: { status: StatusKey; hasMore: boolean };
-    }
+  | { type: "SET_HAS_MORE_BY_STATUS"; payload: { status: StatusKey; hasMore: boolean } }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_SEARCH_QUERY"; payload: string | null }
   | { type: "SET_TOTAL_COUNT_BY_STATUS"; payload: Record<StatusKey, number> }
   | { type: "RESET_PAGINATION" }
   | { type: "SET_FILTERS_CHANGED"; payload: boolean }
-  | {
-      type: "UPDATE_TASKS_FOR_STATUS";
-      payload: { status: StatusKey; tasks: Task[] };
-    }
+  | { type: "UPDATE_TASKS_FOR_STATUS"; payload: { status: StatusKey; tasks: Task[] } }
   | { type: "SET_SELECTED_COUNTRIES"; payload: string[] }
+  | { type: "SET_COUNTRY_OPTIONS"; payload: string[] }
   | { type: "SET_HOURLY_BUDGET_TYPE"; payload: string | null }
-  | {
-      type: "SET_PRICE_RANGE";
-      payload: { from: number | null; to: number | null };
-    };
+  | { type: "SET_PRICE_RANGE"; payload: { from: number | null; to: number | null } };
 
 const initialState: State = {
   tasksByStatus: {
@@ -85,6 +75,7 @@ const initialState: State = {
   },
   filtersChanged: false,
   selectedCountries: [],
+  countryOptions: [],
   hourlyBudgetType: null,
   priceRange: { from: null, to: null },
 };
@@ -106,11 +97,7 @@ function reducer(state: State, action: Action): State {
     case "SET_CATEGORY_FILTER":
       return { ...state, categoryFilter: action.payload, filtersChanged: true };
     case "SET_SUBCATEGORY_FILTER":
-      return {
-        ...state,
-        subcategoryFilter: action.payload,
-        filtersChanged: true,
-      };
+      return { ...state, subcategoryFilter: action.payload, filtersChanged: true };
     case "SET_DATE_RANGE":
       return { ...state, dateRange: action.payload, filtersChanged: true };
     case "SET_LIMIT":
@@ -147,17 +134,11 @@ function reducer(state: State, action: Action): State {
     case "SET_FILTERS_CHANGED":
       return { ...state, filtersChanged: action.payload };
     case "SET_SELECTED_COUNTRIES":
-      return {
-        ...state,
-        selectedCountries: action.payload,
-        filtersChanged: true,
-      };
+      return { ...state, selectedCountries: action.payload, filtersChanged: true };
+    case "SET_COUNTRY_OPTIONS":
+      return { ...state, countryOptions: action.payload };
     case "SET_HOURLY_BUDGET_TYPE":
-      return {
-        ...state,
-        hourlyBudgetType: action.payload,
-        filtersChanged: true,
-      };
+      return { ...state, hourlyBudgetType: action.payload, filtersChanged: true };
     case "SET_PRICE_RANGE":
       return { ...state, priceRange: action.payload, filtersChanged: true };
     default:
@@ -229,6 +210,10 @@ export function useTasks() {
     dispatch({ type: "SET_SELECTED_COUNTRIES", payload: countries });
   }, []);
 
+  const setCountryOptions = useCallback((countries: string[]) => {
+    dispatch({ type: "SET_COUNTRY_OPTIONS", payload: countries });
+  }, []);
+
   const setHourlyBudgetType = useCallback((val: string | null) => {
     dispatch({ type: "SET_HOURLY_BUDGET_TYPE", payload: val });
   }, []);
@@ -239,6 +224,27 @@ export function useTasks() {
     },
     []
   );
+
+  useEffect(() => {
+    const fetchCountryOptions = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("prospect_location_country");
+
+      if (!error && data) {
+        const uniqueCountries = Array.from(
+          new Set(
+            data
+              .map((row) => row.prospect_location_country)
+              .filter((c): c is string => typeof c === "string")
+          )
+        ).sort();
+        setCountryOptions(uniqueCountries);
+      }
+    };
+
+    fetchCountryOptions();
+  }, []);
 
   const fetchTasksByStatus = useCallback(
     async (
@@ -267,7 +273,7 @@ export function useTasks() {
             case "not_provided":
               return filters.hourlyBudgetType;
             case "null":
-              return "null"; // explicitly send 'null' string for DB to interpret as IS NULL
+              return "null";
             default:
               return null;
           }
@@ -344,7 +350,6 @@ export function useTasks() {
           if (currentState.searchQuery)
             query = query.ilike("title", `%${currentState.searchQuery}%`);
 
-          // ✅ Apply selectedCountries
           if (currentState.selectedCountries.length > 0) {
             query = query.in(
               "prospect_location_country",
@@ -352,7 +357,6 @@ export function useTasks() {
             );
           }
 
-          // ✅ Apply hourlyBudgetType
           if (
             currentState.hourlyBudgetType === "default" ||
             currentState.hourlyBudgetType === "manual" ||
@@ -363,7 +367,6 @@ export function useTasks() {
             query = query.is("hourlyBudgetType", null);
           }
 
-          // ✅ Apply price range
           if (
             currentState.hourlyBudgetType === "manual" ||
             currentState.hourlyBudgetType === "default"
@@ -625,7 +628,6 @@ export function useTasks() {
         },
         handleRealtimeUpdate
       )
-
       .subscribe();
 
     return () => {
@@ -679,7 +681,9 @@ export function useTasks() {
     fetchStatusWiseCounts,
     totalCountByStatus: state.totalCountByStatus,
     statusKeyArray,
+    selectedCountries: state.selectedCountries,
     setSelectedCountries,
+    countryOptions: state.countryOptions,
     hourlyBudgetType: state.hourlyBudgetType,
     setHourlyBudgetType,
     priceRange: state.priceRange,

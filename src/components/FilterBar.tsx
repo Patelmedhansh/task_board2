@@ -140,7 +140,7 @@ export default function FilterBar({
     }).format(date);
   };
 
-  const filteredCountries = (countryOptions || []).filter((country) =>
+  const filteredCountries = countryOptions.filter((country) =>
     country.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -153,10 +153,10 @@ export default function FilterBar({
   };
 
   const toggleSelectAll = () => {
-    if (countryOptions && selectedCountries.length === countryOptions.length) {
+    if (selectedCountries.length === countryOptions.length) {
       setSelectedCountries([]);
     } else {
-      setSelectedCountries([...(countryOptions || [])]);
+      setSelectedCountries([...countryOptions]);
     }
   };
 
@@ -232,7 +232,7 @@ export default function FilterBar({
             <div className="flex items-center">
               <input
                 type="checkbox"
-                checked={countryOptions && selectedCountries.length === countryOptions.length}
+                checked={selectedCountries.length === countryOptions.length}
                 onChange={toggleSelectAll}
                 className="mr-2"
               />
