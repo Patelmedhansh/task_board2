@@ -266,18 +266,25 @@ export function useTasks() {
         const offset = filters.offset ?? 0;
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
-        let hourlyBudgetTypeParam: string | null = (() => {
-          switch (filters.hourlyBudgetType) {
-            case "default":
-            case "manual":
-            case "not_provided":
-              return filters.hourlyBudgetType;
-            case "null":
-              return "null";
-            default:
-              return null;
-          }
-        })();
+        let hourlyBudgetTypeParam: string | null = null;
+        let priceField = "amount_rawValue";
+
+        switch (filters.hourlyBudgetType) {
+          case "default":
+          case "manual":
+            hourlyBudgetTypeParam = filters.hourlyBudgetType;
+            priceField = "hourlyBudgetMin_rawValue";
+            break;
+          case "not_provided":
+            hourlyBudgetTypeParam = "not_provided";
+            break;
+          case "null":
+            hourlyBudgetTypeParam = "null";
+            priceField = "amount_rawValue";
+            break;
+          default:
+            hourlyBudgetTypeParam = null;
+        }
 
         const { data, error } = await supabase.rpc("get_task_by_status", {
           task_status: status,
@@ -294,6 +301,7 @@ export function useTasks() {
           hourly_budget_type: hourlyBudgetTypeParam,
           price_from: filters.priceFrom,
           price_to: filters.priceTo,
+          price_field: priceField,
         });
 
         if (error) {
@@ -389,7 +397,7 @@ export function useTasks() {
               );
             if (currentState.priceRange.to !== null)
               query = query.lte(
-                "amount_displayValue",
+                "amount_rawValue",
                 currentState.priceRange.to
               );
           }
