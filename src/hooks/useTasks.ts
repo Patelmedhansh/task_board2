@@ -246,16 +246,21 @@ export function useTasks() {
     fetchCountryOptions();
   }, []);
 
-  const applyPriceFilters = (query: any, hourlyBudgetType: string | null, priceFrom: number | null, priceTo: number | null) => {
+  const applyPriceFilters = (query: any) => {
+    const currentState = stateRef.current;
+    const { hourlyBudgetType, priceRange } = currentState;
+
+    if (!hourlyBudgetType) return query;
+
     switch (hourlyBudgetType) {
       case "default":
       case "manual":
         query = query.eq("hourlyBudgetType", hourlyBudgetType);
-        if (priceFrom !== null) {
-          query = query.gte("hourlyBudgetMin_rawValue", priceFrom);
+        if (priceRange.from !== null) {
+          query = query.gte("hourlyBudgetMin_rawValue", priceRange.from);
         }
-        if (priceTo !== null) {
-          query = query.lte("hourlyBudgetMax_rawValue", priceTo);
+        if (priceRange.to !== null) {
+          query = query.lte("hourlyBudgetMax_rawValue", priceRange.to);
         }
         break;
       case "not_provided":
@@ -263,11 +268,11 @@ export function useTasks() {
         break;
       case "null":
         query = query.is("hourlyBudgetType", null);
-        if (priceFrom !== null) {
-          query = query.gte("amount_rawValue", priceFrom);
+        if (priceRange.from !== null) {
+          query = query.gte("amount_rawValue", priceRange.from);
         }
-        if (priceTo !== null) {
-          query = query.lte("amount_rawValue", priceTo);
+        if (priceRange.to !== null) {
+          query = query.lte("amount_rawValue", priceRange.to);
         }
         break;
     }
@@ -285,9 +290,6 @@ export function useTasks() {
         limit?: number | null;
         offset?: number;
         selectedCountries?: string[];
-        hourlyBudgetType?: string | null;
-        priceFrom?: number | null;
-        priceTo?: number | null;
       }
     ): Promise<Task[]> => {
       try {
@@ -324,12 +326,7 @@ export function useTasks() {
           query = query.in("prospect_location_country", filters.selectedCountries);
         }
 
-        query = applyPriceFilters(
-          query,
-          filters.hourlyBudgetType ?? null,
-          filters.priceFrom ?? null,
-          filters.priceTo ?? null
-        );
+        query = applyPriceFilters(query);
 
         const { data, error } = await query;
 
@@ -399,12 +396,7 @@ export function useTasks() {
             );
           }
 
-          query = applyPriceFilters(
-            query,
-            currentState.hourlyBudgetType,
-            currentState.priceRange.from,
-            currentState.priceRange.to
-          );
+          query = applyPriceFilters(query);
         }
 
         const { count } = await query;
@@ -469,11 +461,6 @@ export function useTasks() {
             selectedCountries: shouldApplyFilters
               ? currentState.selectedCountries
               : [],
-            hourlyBudgetType: shouldApplyFilters
-              ? currentState.hourlyBudgetType
-              : null,
-            priceFrom: shouldApplyFilters ? currentState.priceRange.from : null,
-            priceTo: shouldApplyFilters ? currentState.priceRange.to : null,
           };
 
           const tasks = await fetchTasksByStatus(label, {
