@@ -153,7 +153,7 @@ export default function FilterBar({
   };
 
   const toggleSelectAll = () => {
-    if (selectedCountries.length === countryOptions.length) {
+    if (countryOptions && selectedCountries.length === countryOptions.length) {
       setSelectedCountries([]);
     } else {
       setSelectedCountries([...countryOptions]);
@@ -232,7 +232,7 @@ export default function FilterBar({
             <div className="flex items-center">
               <input
                 type="checkbox"
-                checked={selectedCountries.length === countryOptions.length}
+                checked={countryOptions && selectedCountries.length === countryOptions.length}
                 onChange={toggleSelectAll}
                 className="mr-2"
               />
