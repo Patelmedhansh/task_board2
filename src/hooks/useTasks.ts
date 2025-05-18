@@ -2,7 +2,6 @@ import { useReducer, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
 import debounce from "lodash.debounce";
-
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
 
