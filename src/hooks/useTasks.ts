@@ -267,20 +267,17 @@ export function useTasks() {
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
         let hourlyBudgetTypeParam: string | null = null;
-        let priceField = "amount_rawValue";
 
         switch (filters.hourlyBudgetType) {
           case "default":
           case "manual":
             hourlyBudgetTypeParam = filters.hourlyBudgetType;
-            priceField = "hourlyBudgetMin_rawValue";
             break;
           case "not_provided":
             hourlyBudgetTypeParam = "not_provided";
             break;
           case "null":
             hourlyBudgetTypeParam = "null";
-            priceField = "amount_rawValue";
             break;
           default:
             hourlyBudgetTypeParam = null;
@@ -300,8 +297,7 @@ export function useTasks() {
             : null,
           hourly_budget_type: hourlyBudgetTypeParam,
           price_from: filters.priceFrom,
-          price_to: filters.priceTo,
-          price_field: priceField,
+          price_to: filters.priceTo
         });
 
         if (error) {
