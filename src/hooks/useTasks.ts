@@ -266,18 +266,22 @@ export function useTasks() {
         const offset = filters.offset ?? 0;
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
-        let hourlyBudgetTypeParam: string | null = (() => {
+        let hourlyBudgetTypeParam: string | null = null;
+        
+        if (filters.hourlyBudgetType) {
           switch (filters.hourlyBudgetType) {
             case "default":
             case "manual":
             case "not_provided":
-              return filters.hourlyBudgetType;
+              hourlyBudgetTypeParam = filters.hourlyBudgetType;
+              break;
             case "null":
-              return "null";
+              hourlyBudgetTypeParam = "null";
+              break;
             default:
-              return null;
+              hourlyBudgetTypeParam = null;
           }
-        })();
+        }
 
         const { data, error } = await supabase.rpc("get_task_by_status", {
           task_status: status,
@@ -383,15 +387,9 @@ export function useTasks() {
               );
           } else if (currentState.hourlyBudgetType === "null") {
             if (currentState.priceRange.from !== null)
-              query = query.gte(
-                "amount_rawValue",
-                currentState.priceRange.from
-              );
+              query = query.gte("amount_rawValue", currentState.priceRange.from);
             if (currentState.priceRange.to !== null)
-              query = query.lte(
-                "amount_displayValue",
-                currentState.priceRange.to
-              );
+              query = query.lte("amount_rawValue", currentState.priceRange.to);
           }
         }
 
