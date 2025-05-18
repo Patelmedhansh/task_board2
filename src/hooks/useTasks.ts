@@ -260,6 +260,19 @@ export function useTasks() {
         const offset = filters.offset ?? 0;
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
+        let hourlyBudgetTypeParam: string | null = (() => {
+          switch (filters.hourlyBudgetType) {
+            case "default":
+            case "manual":
+            case "not_provided":
+              return filters.hourlyBudgetType;
+            case "null":
+              return "null"; // explicitly send 'null' string for DB to interpret as IS NULL
+            default:
+              return null;
+          }
+        })();
+
         const { data, error } = await supabase.rpc("get_task_by_status", {
           task_status: status,
           category_filter: filters.categoryFilter,
@@ -272,10 +285,7 @@ export function useTasks() {
           country_filter: filters.selectedCountries?.length
             ? filters.selectedCountries
             : null,
-          hourly_budget_type:
-            filters.hourlyBudgetType === "fixed"
-              ? null
-              : filters.hourlyBudgetType,
+          hourly_budget_type: hourlyBudgetTypeParam,
           price_from: filters.priceFrom,
           price_to: filters.priceTo,
         });
@@ -321,15 +331,65 @@ export function useTasks() {
         ) {
           if (currentState.categoryFilter)
             query = query.eq("category", currentState.categoryFilter);
+
           if (currentState.subcategoryFilter)
             query = query.eq("subcategory", currentState.subcategoryFilter);
-          if (currentState.dateRange?.from && currentState.dateRange?.to) {
-            query = query
-              .gte("created_at", currentState.dateRange.from)
-              .lte("created_at", currentState.dateRange.to);
-          }
+
+          if (currentState.dateRange?.from)
+            query = query.gte("created_at", currentState.dateRange.from);
+
+          if (currentState.dateRange?.to)
+            query = query.lte("created_at", currentState.dateRange.to);
+
           if (currentState.searchQuery)
             query = query.ilike("title", `%${currentState.searchQuery}%`);
+
+          // ✅ Apply selectedCountries
+          if (currentState.selectedCountries.length > 0) {
+            query = query.in(
+              "prospect_location_country",
+              currentState.selectedCountries
+            );
+          }
+
+          // ✅ Apply hourlyBudgetType
+          if (
+            currentState.hourlyBudgetType === "default" ||
+            currentState.hourlyBudgetType === "manual" ||
+            currentState.hourlyBudgetType === "not_provided"
+          ) {
+            query = query.eq("hourlyBudgetType", currentState.hourlyBudgetType);
+          } else if (currentState.hourlyBudgetType === "null") {
+            query = query.is("hourlyBudgetType", null);
+          }
+
+          // ✅ Apply price range
+          if (
+            currentState.hourlyBudgetType === "manual" ||
+            currentState.hourlyBudgetType === "default"
+          ) {
+            if (currentState.priceRange.from !== null)
+              query = query.gte(
+                "hourlyBudgetMin_rawValue",
+                currentState.priceRange.from
+              );
+            if (currentState.priceRange.to !== null)
+              query = query.lte(
+                "hourlyBudgetMax_rawValue",
+                currentState.priceRange.to
+              );
+          } else if (currentState.hourlyBudgetType === "null") {
+            if (currentState.priceRange.from !== null)
+              query = query.gte(
+                "amount_rawValue",
+                currentState.priceRange.from
+              );
+            if (currentState.priceRange.to !== null)
+              query = query.lte(
+                "amount_displayValue",
+                currentState.priceRange.to
+              );
+          }
         }
 
         const { count } = await query;
@@ -380,6 +440,10 @@ export function useTasks() {
           const shouldApplyFilters =
             !currentState.statusFilter || currentState.statusFilter === label;
 
+          const hourlyBudgetType = shouldApplyFilters
+            ? currentState.hourlyBudgetType
+            : null;
+
           const filtered = {
             categoryFilter: shouldApplyFilters
               ? currentState.categoryFilter
@@ -394,9 +458,7 @@ export function useTasks() {
             selectedCountries: shouldApplyFilters
               ? currentState.selectedCountries
               : [],
-            hourlyBudgetType: shouldApplyFilters
-              ? currentState.hourlyBudgetType
-              : null,
+            hourlyBudgetType: hourlyBudgetType,
             priceFrom: shouldApplyFilters ? currentState.priceRange.from : null,
             priceTo: shouldApplyFilters ? currentState.priceRange.to : null,
           };
