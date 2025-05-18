@@ -246,39 +246,6 @@ export function useTasks() {
     fetchCountryOptions();
   }, []);
 
-  const applyPriceFilters = (query: any) => {
-    const currentState = stateRef.current;
-    const { hourlyBudgetType, priceRange } = currentState;
-
-    if (!hourlyBudgetType) return query;
-
-    switch (hourlyBudgetType) {
-      case "default":
-      case "manual":
-        query = query.eq("hourlyBudgetType", hourlyBudgetType);
-        if (priceRange.from !== null) {
-          query = query.gte("hourlyBudgetMin_rawValue", priceRange.from);
-        }
-        if (priceRange.to !== null) {
-          query = query.lte("hourlyBudgetMax_rawValue", priceRange.to);
-        }
-        break;
-      case "not_provided":
-        query = query.is("hourlyBudgetType", null);
-        break;
-      case "null":
-        query = query.is("hourlyBudgetType", null);
-        if (priceRange.from !== null) {
-          query = query.gte("amount_rawValue", priceRange.from);
-        }
-        if (priceRange.to !== null) {
-          query = query.lte("amount_rawValue", priceRange.to);
-        }
-        break;
-    }
-    return query;
-  };
-
   const fetchTasksByStatus = useCallback(
     async (
       status: string,
@@ -290,45 +257,44 @@ export function useTasks() {
         limit?: number | null;
         offset?: number;
         selectedCountries?: string[];
+        hourlyBudgetType?: string | null;
+        priceFrom?: number | null;
+        priceTo?: number | null;
       }
     ): Promise<Task[]> => {
       try {
         const offset = filters.offset ?? 0;
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
-        let query = supabase
-          .from("projects")
-          .select("*")
-          .eq("status", status)
-          .range(offset, offset + effectiveLimit - 1);
+        let hourlyBudgetTypeParam: string | null = (() => {
+          switch (filters.hourlyBudgetType) {
+            case "default":
+            case "manual":
+            case "not_provided":
+              return filters.hourlyBudgetType;
+            case "null":
+              return "null";
+            default:
+              return null;
+          }
+        })();
 
-        if (filters.categoryFilter) {
-          query = query.eq("category", filters.categoryFilter);
-        }
-
-        if (filters.subcategoryFilter) {
-          query = query.eq("subcategory", filters.subcategoryFilter);
-        }
-
-        if (filters.dateRange?.from) {
-          query = query.gte("created_at", filters.dateRange.from);
-        }
-
-        if (filters.dateRange?.to) {
-          query = query.lte("created_at", filters.dateRange.to);
-        }
-
-        if (filters.searchQuery) {
-          query = query.ilike("title", `%${filters.searchQuery}%`);
-        }
-
-        if (filters.selectedCountries?.length) {
-          query = query.in("prospect_location_country", filters.selectedCountries);
-        }
-
-        query = applyPriceFilters(query);
-
-        const { data, error } = await query;
+        const { data, error } = await supabase.rpc("get_task_by_status", {
+          task_status: status,
+          category_filter: filters.categoryFilter,
+          subcategory_filter: filters.subcategoryFilter,
+          date_from: filters.dateRange?.from,
+          date_to: filters.dateRange?.to,
+          limit_count: effectiveLimit,
+          offset_count: offset,
+          search_query: filters.searchQuery,
+          country_filter: filters.selectedCountries?.length
+            ? filters.selectedCountries
+            : null,
+          hourly_budget_type: hourlyBudgetTypeParam,
+          price_from: filters.priceFrom,
+          price_to: filters.priceTo,
+        });
 
         if (error) {
           console.error("Error fetching tasks:", error);
@@ -369,25 +335,20 @@ export function useTasks() {
           !currentState.statusFilter ||
           currentState.statusFilter === statusLabels[key]
         ) {
-          if (currentState.categoryFilter) {
+          if (currentState.categoryFilter)
             query = query.eq("category", currentState.categoryFilter);
-          }
 
-          if (currentState.subcategoryFilter) {
+          if (currentState.subcategoryFilter)
             query = query.eq("subcategory", currentState.subcategoryFilter);
-          }
 
-          if (currentState.dateRange?.from) {
+          if (currentState.dateRange?.from)
             query = query.gte("created_at", currentState.dateRange.from);
-          }
 
-          if (currentState.dateRange?.to) {
+          if (currentState.dateRange?.to)
             query = query.lte("created_at", currentState.dateRange.to);
-          }
 
-          if (currentState.searchQuery) {
+          if (currentState.searchQuery)
             query = query.ilike("title", `%${currentState.searchQuery}%`);
-          }
 
           if (currentState.selectedCountries.length > 0) {
             query = query.in(
@@ -396,7 +357,42 @@ export function useTasks() {
             );
           }
 
-          query = applyPriceFilters(query);
+          if (
+            currentState.hourlyBudgetType === "default" ||
+            currentState.hourlyBudgetType === "manual" ||
+            currentState.hourlyBudgetType === "not_provided"
+          ) {
+            query = query.eq("hourlyBudgetType", currentState.hourlyBudgetType);
+          } else if (currentState.hourlyBudgetType === "null") {
+            query = query.is("hourlyBudgetType", null);
+          }
+
+          if (
+            currentState.hourlyBudgetType === "manual" ||
+            currentState.hourlyBudgetType === "default"
+          ) {
+            if (currentState.priceRange.from !== null)
+              query = query.gte(
+                "hourlyBudgetMin_rawValue",
+                currentState.priceRange.from
+              );
+            if (currentState.priceRange.to !== null)
+              query = query.lte(
+                "hourlyBudgetMax_rawValue",
+                currentState.priceRange.to
+              );
+          } else if (currentState.hourlyBudgetType === "null") {
+            if (currentState.priceRange.from !== null)
+              query = query.gte(
+                "amount_rawValue",
+                currentState.priceRange.from
+              );
+            if (currentState.priceRange.to !== null)
+              query = query.lte(
+                "amount_displayValue",
+                currentState.priceRange.to
+              );
+          }
         }
 
         const { count } = await query;
@@ -461,6 +457,11 @@ export function useTasks() {
             selectedCountries: shouldApplyFilters
               ? currentState.selectedCountries
               : [],
+            hourlyBudgetType: shouldApplyFilters
+              ? currentState.hourlyBudgetType
+              : null,
+            priceFrom: shouldApplyFilters ? currentState.priceRange.from : null,
+            priceTo: shouldApplyFilters ? currentState.priceRange.to : null,
           };
 
           const tasks = await fetchTasksByStatus(label, {
@@ -580,10 +581,10 @@ export function useTasks() {
         [destCol]: newDestTasks,
       });
 
-      const { error } = await supabase
-        .from("projects")
-        .update({ status: updatedTask.status })
-        .eq("id", task.id);
+      const { error } = await supabase.rpc("update_task_status", {
+        task_id: task.id,
+        new_status: updatedTask.status,
+      });
 
       if (error) console.error("Failed to update task status:", error);
       await fetchStatusWiseCounts();
