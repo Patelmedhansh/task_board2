@@ -443,10 +443,6 @@ export function useTasks() {
           const shouldApplyFilters =
             !currentState.statusFilter || currentState.statusFilter === label;
 
-          const hourlyBudgetType = shouldApplyFilters
-            ? currentState.hourlyBudgetType
-            : null;
-
           const filtered = {
             categoryFilter: shouldApplyFilters
               ? currentState.categoryFilter
@@ -461,7 +457,9 @@ export function useTasks() {
             selectedCountries: shouldApplyFilters
               ? currentState.selectedCountries
               : [],
-            hourlyBudgetType: hourlyBudgetType,
+            hourlyBudgetType: shouldApplyFilters
+              ? currentState.hourlyBudgetType
+              : null,
             priceFrom: shouldApplyFilters ? currentState.priceRange.from : null,
             priceTo: shouldApplyFilters ? currentState.priceRange.to : null,
           };
@@ -476,19 +474,17 @@ export function useTasks() {
             return { key, tasks, page };
           }
 
+          const existingTasks = currentState.tasksByStatus[key];
+          const newTasks = tasks.filter(
+            (newTask) =>
+              !existingTasks.some((existingTask) => existingTask.id === newTask.id)
+          );
+
           dispatch({
             type: "UPDATE_TASKS_FOR_STATUS",
             payload: {
               status: key,
-              tasks: [
-                ...currentState.tasksByStatus[key],
-                ...tasks.filter(
-                  (newTask) =>
-                    !currentState.tasksByStatus[key].some(
-                      (t) => t.id === newTask.id
-                    )
-                ),
-              ],
+              tasks: [...existingTasks, ...newTasks],
             },
           });
 
