@@ -246,6 +246,34 @@ export function useTasks() {
     fetchCountryOptions();
   }, []);
 
+  const applyPriceFilters = (query: any, hourlyBudgetType: string | null, priceFrom: number | null, priceTo: number | null) => {
+    switch (hourlyBudgetType) {
+      case "default":
+      case "manual":
+        query = query.eq("hourlyBudgetType", hourlyBudgetType);
+        if (priceFrom !== null) {
+          query = query.gte("hourlyBudgetMin_rawValue", priceFrom);
+        }
+        if (priceTo !== null) {
+          query = query.lte("hourlyBudgetMax_rawValue", priceTo);
+        }
+        break;
+      case "not_provided":
+        query = query.is("hourlyBudgetType", null);
+        break;
+      case "null":
+        query = query.is("hourlyBudgetType", null);
+        if (priceFrom !== null) {
+          query = query.gte("amount_rawValue", priceFrom);
+        }
+        if (priceTo !== null) {
+          query = query.lte("amount_rawValue", priceTo);
+        }
+        break;
+    }
+    return query;
+  };
+
   const fetchTasksByStatus = useCallback(
     async (
       status: string,
@@ -296,32 +324,12 @@ export function useTasks() {
           query = query.in("prospect_location_country", filters.selectedCountries);
         }
 
-        if (filters.hourlyBudgetType) {
-          switch (filters.hourlyBudgetType) {
-            case "default":
-            case "manual":
-              query = query.eq("hourlyBudgetType", filters.hourlyBudgetType);
-              if (filters.priceFrom !== null) {
-                query = query.gte("hourlyBudgetMin_rawValue", filters.priceFrom);
-              }
-              if (filters.priceTo !== null) {
-                query = query.lte("hourlyBudgetMax_rawValue", filters.priceTo);
-              }
-              break;
-            case "not_provided":
-              query = query.is("hourlyBudgetType", null);
-              break;
-            case "null":
-              query = query.is("hourlyBudgetType", null);
-              if (filters.priceFrom !== null) {
-                query = query.gte("amount_rawValue", filters.priceFrom);
-              }
-              if (filters.priceTo !== null) {
-                query = query.lte("amount_rawValue", filters.priceTo);
-              }
-              break;
-          }
-        }
+        query = applyPriceFilters(
+          query,
+          filters.hourlyBudgetType ?? null,
+          filters.priceFrom ?? null,
+          filters.priceTo ?? null
+        );
 
         const { data, error } = await query;
 
@@ -391,32 +399,12 @@ export function useTasks() {
             );
           }
 
-          if (currentState.hourlyBudgetType) {
-            switch (currentState.hourlyBudgetType) {
-              case "default":
-              case "manual":
-                query = query.eq("hourlyBudgetType", currentState.hourlyBudgetType);
-                if (currentState.priceRange.from !== null) {
-                  query = query.gte("hourlyBudgetMin_rawValue", currentState.priceRange.from);
-                }
-                if (currentState.priceRange.to !== null) {
-                  query = query.lte("hourlyBudgetMax_rawValue", currentState.priceRange.to);
-                }
-                break;
-              case "not_provided":
-                query = query.is("hourlyBudgetType", null);
-                break;
-              case "null":
-                query = query.is("hourlyBudgetType", null);
-                if (currentState.priceRange.from !== null) {
-                  query = query.gte("amount_rawValue", currentState.priceRange.from);
-                }
-                if (currentState.priceRange.to !== null) {
-                  query = query.lte("amount_rawValue", currentState.priceRange.to);
-                }
-                break;
-            }
-          }
+          query = applyPriceFilters(
+            query,
+            currentState.hourlyBudgetType,
+            currentState.priceRange.from,
+            currentState.priceRange.to
+          );
         }
 
         const { count } = await query;
