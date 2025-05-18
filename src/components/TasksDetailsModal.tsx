@@ -134,7 +134,7 @@ export default function TaskDetailsModal({
 
   const fetchTaskDetails = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("get_task_details", {
+    const { data, error } = await supabase.rpc("get_task_detail", {
       task_id: taskId,
     });
     if (!error && data && data.length > 0) setTask(data[0]);
@@ -451,6 +451,12 @@ export default function TaskDetailsModal({
                       <span className="mr-8">Total Applicant</span>
                       <span className="font-normal">
                         {task.totalApplicants ?? "-"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-x-12">
+                      <span className="mr-8">Willing To Hire</span>
+                      <span className="font-normal">
+                        {task.willingToHire ?? "-"}
                       </span>
                     </div>
                   </div>

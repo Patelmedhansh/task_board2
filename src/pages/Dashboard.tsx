@@ -34,7 +34,8 @@ export default function Dashboard() {
   const [isDragging, setIsDragging] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState<StatusKey>("to-do");
-
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
 
   const {
     tasksByStatus,
@@ -60,20 +61,16 @@ export default function Dashboard() {
     fetchStatusWiseCounts,
     totalCountByStatus,
     statusKeyArray,
+    hourlyBudgetType,
+    setHourlyBudgetType,
+    priceRange,
+    setPriceRange,
   } = useTasks();
 
   const { setLoading } = useLoader();
   const [sidebarOpen, setSidebarOpen] = useState(
     () => window.innerWidth >= 768
   );
-
-  useEffect(() => {
-    const handleResize = () => {
-      setSidebarOpen(window.innerWidth >= 768);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   type StatusKey = (typeof statusKeyArray)[number];
 
@@ -86,6 +83,14 @@ export default function Dashboard() {
     "in-progress": "In Progress",
     done: "Done",
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -107,29 +112,25 @@ export default function Dashboard() {
     limit,
   ]);
 
-  //desktop
   useEffect(() => {
     if (window.innerWidth < 768) return;
-  
     const scrollEl = scrollRef.current;
     const handleScroll = () => {
       if (
         scrollEl &&
-        scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 300 &&
+        scrollEl.scrollTop + scrollEl.clientHeight >=
+          scrollEl.scrollHeight - 300 &&
         !loading
       ) {
         loadMoreTasks();
       }
     };
-  
     scrollEl?.addEventListener("scroll", handleScroll);
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
   }, [loading, loadMoreTasks]);
-  
-  //mobile (per column)
+
   useEffect(() => {
     if (window.innerWidth >= 768) return;
-
     const scrollEl = scrollRef.current;
     const handleScroll = () => {
       if (
@@ -144,7 +145,6 @@ export default function Dashboard() {
         loadMoreTasks(false, activeMobileTab);
       }
     };
-
     scrollEl?.addEventListener("scroll", handleScroll);
     return () => scrollEl?.removeEventListener("scroll", handleScroll);
   }, [
@@ -156,13 +156,11 @@ export default function Dashboard() {
     loadMoreTasks,
   ]);
 
-  //scroll reset on tab change
   useEffect(() => {
     if (window.innerWidth < 768 && scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   }, [activeMobileTab]);
-  
 
   useEffect(() => {
     const fetchCategoryData = async () => {
@@ -187,11 +185,32 @@ export default function Dashboard() {
         setCategoryOptions(Array.from(categories));
         setSubcategoryMap(map);
       }
-
       setLoading(false);
     };
 
     fetchCategoryData();
+  }, []);
+
+  useEffect(() => {
+    const fetchCountryData = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("projects")
+        .select("prospect_location_country");
+      if (!error && data) {
+        const uniqueCountries = Array.from(
+          new Set(
+            data
+              .map((row) => row.prospect_location_country)
+              .filter((c): c is string => typeof c === "string")
+          )
+        ).sort();
+        setCountryOptions(uniqueCountries);
+      }
+      setLoading(false);
+    };
+
+    fetchCountryData();
   }, []);
 
   const onDragEnd = async (event: DragEndEvent) => {
@@ -229,7 +248,6 @@ export default function Dashboard() {
     await moveTask(activeId, sourceCol, destCol, destIndex);
     await fetchStatusWiseCounts();
     setLoading(false);
-
     setActiveTask(null);
   };
 
@@ -259,14 +277,13 @@ export default function Dashboard() {
         handleLogout={handleLogout}
       />
       <div
-        className={`flex-1 flex flex-col transition-all duration-300
-    ${
-      sidebarOpen && window.innerWidth >= 768
-        ? "ml-64"
-        : window.innerWidth >= 768
-        ? "ml-16"
-        : ""
-    }`}
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          sidebarOpen && window.innerWidth >= 768
+            ? "ml-64"
+            : window.innerWidth >= 768
+            ? "ml-16"
+            : ""
+        }`}
       >
         <Header
           sidebarOpen={sidebarOpen}
@@ -296,6 +313,13 @@ export default function Dashboard() {
               subcategoryMap={subcategoryMap}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              countryOptions={countryOptions}
+              selectedCountries={selectedCountries}
+              setSelectedCountries={setSelectedCountries}
+              hourlyBudgetType={hourlyBudgetType}
+              setHourlyBudgetType={setHourlyBudgetType}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
             />
           </div>
 
@@ -304,12 +328,11 @@ export default function Dashboard() {
               <button
                 key={col}
                 onClick={() => setActiveMobileTab(col)}
-                className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors duration-200
-        ${
-          activeMobileTab === col
-            ? "bg-white shadow text-black"
-            : "bg-transparent text-gray-600"
-        }`}
+                className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors duration-200 ${
+                  activeMobileTab === col
+                    ? "bg-white shadow text-black"
+                    : "bg-transparent text-gray-600"
+                }`}
               >
                 <span className="flex items-center justify-center gap-2">
                   {col === "to-do" && (
@@ -410,21 +433,18 @@ export default function Dashboard() {
                 onClose={() => setModalOpen(false)}
                 onStatusChange={async (updatedTask) => {
                   if (!updatedTask) return;
-
                   const updated = { ...tasksByStatus };
                   for (const key of statusKeyArray) {
                     updated[key] = updated[key].filter(
                       (t) => t.id !== updatedTask.id
                     );
                   }
-
                   const newStatus = updatedTask.status
                     .toLowerCase()
                     .replace(" ", "-");
                   if (statusKeyArray.includes(newStatus as any)) {
                     updated[newStatus as StatusKey].unshift(updatedTask);
                   }
-
                   setTasksByStatus(updated);
                   await fetchStatusWiseCounts();
                 }}

@@ -13,26 +13,29 @@ export default function Discard() {
   const [userEmail, setUserEmail] = useState("");
   const [discardedTasks, setDiscardedTasks] = useState<Task[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(
-    null
-  );
-  const [dateRange, setDateRange] = useState<{
-    from: string | null;
-    to: string | null;
-  }>({ from: null, to: null });
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ from: string | null; to: string | null }>({
+    from: null,
+    to: null,
+  });
   const [limit, setLimit] = useState<number | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [subcategoryMap, setSubcategoryMap] = useState<
-    Record<string, string[]>
-  >({});
+  const [subcategoryMap, setSubcategoryMap] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { setLoading } = useLoader();
-  const [sidebarOpen, setSidebarOpen] = useState(
-    () => window.innerWidth >= 768
-  );
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+
+  // NEW FILTER STATES
+   const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [hourlyBudgetType, setHourlyBudgetType] = useState<string | null>(null);
+  const [priceRange, setPriceRange] = useState<{ from: number | null; to: number | null }>({
+    from: null,
+    to: null,
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -46,7 +49,16 @@ export default function Discard() {
     fetchDiscardedTasks();
     getUser();
     fetchCategoryData();
-  }, [categoryFilter, subcategoryFilter, dateRange, limit, searchQuery]);
+  }, [
+    categoryFilter,
+    subcategoryFilter,
+    dateRange,
+    limit,
+    searchQuery,
+    selectedCountries,
+    hourlyBudgetType,
+    priceRange,
+  ]);
 
   useEffect(() => {
     const channel = supabase
@@ -86,11 +98,7 @@ export default function Discard() {
 
   const fetchCategoryData = async () => {
     setLoading(true);
-
-    const { data, error } = await supabase
-      .from("projects")
-      .select("category, subcategory");
-
+    const { data, error } = await supabase.from("projects").select("category, subcategory");
     if (!error && data) {
       const map: Record<string, string[]> = {};
       const categories = new Set<string>();
@@ -107,13 +115,35 @@ export default function Discard() {
       setCategoryOptions(Array.from(categories));
       setSubcategoryMap(map);
     }
-
     setLoading(false);
   };
 
+  useEffect(() => {
+  const fetchCountryData = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("projects")
+      .select("prospect_location_country");
+
+    if (!error && data) {
+      const uniqueCountries = Array.from(
+        new Set(
+          data
+            .map((row) => row.prospect_location_country)
+            .filter((c): c is string => typeof c === "string")
+        )
+      ).sort();
+      setCountryOptions(uniqueCountries);
+    }
+    setLoading(false);
+  };
+
+  fetchCountryData();
+}, []);
+
+
   const fetchDiscardedTasks = async () => {
     setLoading(true);
-
     let query = supabase.from("projects").select("*").eq("status", "Discarded");
 
     if (categoryFilter) query = query.eq("category", categoryFilter);
@@ -123,12 +153,27 @@ export default function Discard() {
     if (searchQuery) query = query.ilike("title", `%${searchQuery}%`);
     if (limit) query = query.limit(limit);
 
+    // APPLYING NEW FILTERS
+    if (selectedCountries.length > 0) {
+      query = query.in("prospect_location_country", selectedCountries);
+    }
+
+    if (hourlyBudgetType === "default" || hourlyBudgetType === "manual") {
+      query = query.eq("hourly_budget_type", hourlyBudgetType);
+    } else if (hourlyBudgetType === "not_provided") {
+      query = query.is("hourly_budget_type", null);
+    } else if (hourlyBudgetType === "fixed") {
+      query = query.eq("hourly_budget_type", "fixed");
+    }
+
+    if (priceRange.from !== null) query = query.gte("price", priceRange.from);
+    if (priceRange.to !== null) query = query.lte("price", priceRange.to);
+
     const { data, error } = await query;
 
     if (!error && data) {
       setDiscardedTasks(data);
     }
-
     setLoading(false);
   };
 
@@ -139,11 +184,7 @@ export default function Discard() {
   };
 
   return (
-    <div
-      className={`flex min-h-screen ${
-        sidebarOpen ? "overflow-hidden" : "overflow-x-auto"
-      }`}
-    >
+    <div className={`flex min-h-screen ${sidebarOpen ? "overflow-hidden" : "overflow-x-auto"}`}>
       <Sidebar
         sidebarOpen={sidebarOpen}
         userEmail={userEmail}
@@ -151,14 +192,13 @@ export default function Discard() {
         handleLogout={handleLogout}
       />
       <div
-        className={`flex-1 flex flex-col transition-all duration-300
-    ${
-      sidebarOpen && window.innerWidth >= 768
-        ? "ml-64"
-        : window.innerWidth >= 768
-        ? "ml-16"
-        : ""
-    }`}
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          sidebarOpen && window.innerWidth >= 768
+            ? "ml-64"
+            : window.innerWidth >= 768
+            ? "ml-16"
+            : ""
+        }`}
       >
         <Header
           sidebarOpen={sidebarOpen}
@@ -186,6 +226,13 @@ export default function Discard() {
               subcategoryMap={subcategoryMap}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
+              countryOptions={countryOptions}
+              selectedCountries={selectedCountries}
+              setSelectedCountries={setSelectedCountries}
+              hourlyBudgetType={hourlyBudgetType}
+              setHourlyBudgetType={setHourlyBudgetType}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
             />
           </div>
 
@@ -219,6 +266,7 @@ export default function Discard() {
                   </p>
                 </div>
               ))}
+
               {selectedTaskId && (
                 <TaskDetailsModal
                   taskId={selectedTaskId}
@@ -231,12 +279,14 @@ export default function Discard() {
           </div>
         </div>
       </div>
+
       {sidebarOpen && (
         <div
           className="fixed inset-0 backdrop-blur-sm z-30 sm:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
       <LogoutConfirmDialog
         isOpen={showLogoutConfirm}
         onCancel={() => setShowLogoutConfirm(false)}

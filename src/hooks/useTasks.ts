@@ -1,6 +1,7 @@
 import { useReducer, useCallback, useEffect, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { Task } from "../types/tasks";
+import debounce from "lodash.debounce";
 
 export const statusKeyArray = ["to-do", "in-progress", "done"] as const;
 export type StatusKey = (typeof statusKeyArray)[number];
@@ -18,6 +19,9 @@ type State = {
   searchQuery: string | null;
   totalCountByStatus: Record<StatusKey, number>;
   filtersChanged: boolean;
+  selectedCountries: string[];
+  hourlyBudgetType: string | null;
+  priceRange: { from: number | null; to: number | null };
 };
 
 type Action =
@@ -43,6 +47,12 @@ type Action =
   | {
       type: "UPDATE_TASKS_FOR_STATUS";
       payload: { status: StatusKey; tasks: Task[] };
+    }
+  | { type: "SET_SELECTED_COUNTRIES"; payload: string[] }
+  | { type: "SET_HOURLY_BUDGET_TYPE"; payload: string | null }
+  | {
+      type: "SET_PRICE_RANGE";
+      payload: { from: number | null; to: number | null };
     };
 
 const initialState: State = {
@@ -74,6 +84,9 @@ const initialState: State = {
     done: 0,
   },
   filtersChanged: false,
+  selectedCountries: [],
+  hourlyBudgetType: null,
+  priceRange: { from: null, to: null },
 };
 
 function reducer(state: State, action: Action): State {
@@ -133,6 +146,20 @@ function reducer(state: State, action: Action): State {
       };
     case "SET_FILTERS_CHANGED":
       return { ...state, filtersChanged: action.payload };
+    case "SET_SELECTED_COUNTRIES":
+      return {
+        ...state,
+        selectedCountries: action.payload,
+        filtersChanged: true,
+      };
+    case "SET_HOURLY_BUDGET_TYPE":
+      return {
+        ...state,
+        hourlyBudgetType: action.payload,
+        filtersChanged: true,
+      };
+    case "SET_PRICE_RANGE":
+      return { ...state, priceRange: action.payload, filtersChanged: true };
     default:
       return state;
   }
@@ -198,6 +225,21 @@ export function useTasks() {
     dispatch({ type: "SET_FILTERS_CHANGED", payload: val });
   }, []);
 
+  const setSelectedCountries = useCallback((countries: string[]) => {
+    dispatch({ type: "SET_SELECTED_COUNTRIES", payload: countries });
+  }, []);
+
+  const setHourlyBudgetType = useCallback((val: string | null) => {
+    dispatch({ type: "SET_HOURLY_BUDGET_TYPE", payload: val });
+  }, []);
+
+  const setPriceRange = useCallback(
+    (val: { from: number | null; to: number | null }) => {
+      dispatch({ type: "SET_PRICE_RANGE", payload: val });
+    },
+    []
+  );
+
   const fetchTasksByStatus = useCallback(
     async (
       status: string,
@@ -208,13 +250,17 @@ export function useTasks() {
         searchQuery?: string | null;
         limit?: number | null;
         offset?: number;
+        selectedCountries?: string[];
+        hourlyBudgetType?: string | null;
+        priceFrom?: number | null;
+        priceTo?: number | null;
       }
     ): Promise<Task[]> => {
       try {
         const offset = filters.offset ?? 0;
         const effectiveLimit = filters.limit ?? PAGE_SIZE;
 
-        const { data, error } = await supabase.rpc("get_tasks_by_status", {
+        const { data, error } = await supabase.rpc("get_task_by_status", {
           task_status: status,
           category_filter: filters.categoryFilter,
           subcategory_filter: filters.subcategoryFilter,
@@ -223,6 +269,15 @@ export function useTasks() {
           limit_count: effectiveLimit,
           offset_count: offset,
           search_query: filters.searchQuery,
+          country_filter: filters.selectedCountries?.length
+            ? filters.selectedCountries
+            : null,
+          hourly_budget_type:
+            filters.hourlyBudgetType === "fixed"
+              ? null
+              : filters.hourlyBudgetType,
+          price_from: filters.priceFrom,
+          price_to: filters.priceTo,
         });
 
         if (error) {
@@ -322,29 +377,29 @@ export function useTasks() {
           const page = reset ? 0 : currentState.pageByStatus[key];
           const offset = page * PAGE_SIZE;
 
-          let filtered: {
-            categoryFilter: string | null;
-            subcategoryFilter: string | null;
-            dateRange: { from: string | null; to: string | null };
-            searchQuery: string | null;
-          } = {
-            categoryFilter: null,
-            subcategoryFilter: null,
-            dateRange: { from: null, to: null },
-            searchQuery: null,
-          };
+          const shouldApplyFilters =
+            !currentState.statusFilter || currentState.statusFilter === label;
 
-          if (
-            !currentState.statusFilter ||
-            currentState.statusFilter === label
-          ) {
-            filtered = {
-              categoryFilter: currentState.categoryFilter,
-              subcategoryFilter: currentState.subcategoryFilter,
-              dateRange: currentState.dateRange,
-              searchQuery: currentState.searchQuery,
-            };
-          }
+          const filtered = {
+            categoryFilter: shouldApplyFilters
+              ? currentState.categoryFilter
+              : null,
+            subcategoryFilter: shouldApplyFilters
+              ? currentState.subcategoryFilter
+              : null,
+            dateRange: shouldApplyFilters
+              ? currentState.dateRange
+              : { from: null, to: null },
+            searchQuery: shouldApplyFilters ? currentState.searchQuery : null,
+            selectedCountries: shouldApplyFilters
+              ? currentState.selectedCountries
+              : [],
+            hourlyBudgetType: shouldApplyFilters
+              ? currentState.hourlyBudgetType
+              : null,
+            priceFrom: shouldApplyFilters ? currentState.priceRange.from : null,
+            priceTo: shouldApplyFilters ? currentState.priceRange.to : null,
+          };
 
           const tasks = await fetchTasksByStatus(label, {
             ...filtered,
@@ -476,13 +531,16 @@ export function useTasks() {
     [setTasksByStatus, fetchStatusWiseCounts]
   );
 
-  const handleRealtimeUpdate = useCallback(() => {
-    const currentState = stateRef.current;
-    if (!currentState.loading) {
-      loadMoreTasks(true);
-      fetchStatusWiseCounts();
-    }
-  }, [loadMoreTasks, fetchStatusWiseCounts]);
+  const handleRealtimeUpdate = useCallback(
+    debounce(() => {
+      const currentState = stateRef.current;
+      if (!currentState.loading) {
+        loadMoreTasks(true);
+        fetchStatusWiseCounts();
+      }
+    }, 1000),
+    [loadMoreTasks, fetchStatusWiseCounts]
+  );
 
   useEffect(() => {
     const channel = supabase
@@ -490,12 +548,22 @@ export function useTasks() {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "projects",
         },
         handleRealtimeUpdate
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "projects",
+        },
+        handleRealtimeUpdate
+      )
+
       .subscribe();
 
     return () => {
@@ -516,9 +584,12 @@ export function useTasks() {
     state.dateRange,
     state.searchQuery,
     state.limit,
+    state.selectedCountries,
     resetPagination,
     loadMoreTasks,
     fetchStatusWiseCounts,
+    state.hourlyBudgetType,
+    state.priceRange,
   ]);
 
   return {
@@ -546,5 +617,10 @@ export function useTasks() {
     fetchStatusWiseCounts,
     totalCountByStatus: state.totalCountByStatus,
     statusKeyArray,
+    setSelectedCountries,
+    hourlyBudgetType: state.hourlyBudgetType,
+    setHourlyBudgetType,
+    priceRange: state.priceRange,
+    setPriceRange,
   };
 }
